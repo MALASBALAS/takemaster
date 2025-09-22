@@ -1,0 +1,61 @@
+# Ignore environment files and local configuration
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+Thumbs.dbs
+*.log
+.vscode/
+.idea/
+
+# App config (keep only the copy in repo)
+src/nav/config.php
+testtakemaster.balbe.xyz
+
+# Runtime/data dumps and keys
+*.sql
+*.zip
+*.7z
+*.tar
+*.gz
+*.pem
+*.key
+*.crt
+*.csr
+nohup.out
+
+# Temp/backup files
+*.bak
+*.tmp
+*.old
+*~
+*.swp
+*.swo
+
+# Editor/IDE caches
+.history/
+.cache/
+.fleet/
+.vs/
+*.iml
+
+# Package/vendor (if used later)
+vendor/
+composer.phar
+
+# Node/web build outputs (if used later)
+node_modules/
+dist/
+build/
+out/
+
+# Test/coverage (if used later)
+coverage/
+.phpunit.result.cache
+
+# App runtime dirs (if created)
+logs/
+storage/
+uploads/
