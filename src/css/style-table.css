@@ -1,77 +1,105 @@
-/* Estilos generales para tablas */
+:root {
+  --color-bg: #808080;;
+  --color-text: #000000;
+  --color-primary: #007BFF;
+  --color-primary-hover: #339CFF;
+  --color-dark-bg: #181818;
+  --color-panel: #222222;
+  --color-panel-alt: #111111;
+  --color-border: #444444;
+  --color-muted: #666666;
+  --color-light: #f2f2f2;
+  --color-table-even: #f9f9f9;
+  --color-table-odd: #E6F2FF;
+}
+
+/* Tabla general */
 table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-    font-size: 16px;
-    text-align: left;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 30px 0;
+  font-size: 16px;
+  text-align: left;
+  background-color: var(--color-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
+/* Encabezados */
 table th {
-    background-color: #444;
-    color: #fff;
-    font-weight: bold;
-    padding: 10px;
-    text-align: left;
-    border: 1px solid #555;
+  background-color: var(--color-border);
+  color: #fff;
+  font-weight: 600;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-panel);
 }
 
+/* Celdas */
 table td {
-    border: 1px solid #555;
-    padding: 8px;
-    color: #fff;
-    background-color: #333;
+  border-bottom: 1px solid var(--color-panel);
+  padding: 10px;
+  color: var(--color-text);
+  background-color: var(--color-light);
 }
 
+/* Alternancia de filas */
 table tbody tr:nth-child(odd) {
-    background-color: #ff0000;
+  background-color: var(--color-table-odd);
 }
 
 table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+  background-color: var(--color-table-even);
 }
 
+/* Inputs dentro de tabla */
 table input[type="text"],
 table input[type="number"],
 table select {
-    width: 100%;
-    padding: 5px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #111;
-    box-sizing: border-box;
-    color: #fff;
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
 }
 
+table input:focus,
+table select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+/* Total mensual */
 #total-mes {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 18px;
+  text-align: center;
+  margin-top: 30px;
+  font-size: 18px;
+  color: var(--color-text);
 }
 
 #total-mes h2 {
-    font-size: 20px;
-    color: #444;
+  font-size: 22px;
+  color: var(--color-primary);
+  margin-bottom: 10px;
 }
 
 #total-mes p {
-    font-size: 24px;
-    font-weight: bold;
-    color: #fff;
+  font-size: 26px;
+  font-weight: bold;
+  color: var(--color-primary);
 }
 
-/*
-______________________________
-RESPONSIVE
-______________________________
-*/
+/* Responsive */
 @media (max-width: 768px) {
-    table {
-        font-size: 14px;
-    }
+  table {
+    font-size: 14px;
+  }
 
-    button.button-submit {
-        width: 100%;
-    }
+  button.button-submit {
+    width: 100%;
+  }
 }

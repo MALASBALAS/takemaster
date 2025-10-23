@@ -1,64 +1,89 @@
-/* Ajuste general del formulario */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-primary: #007BFF;
+  --color-primary-hover: #339CFF;
+  --color-dark-bg: #181818;
+  --color-panel: #222222;
+  --color-border: #444444;
+  --color-muted: #666666;
+  --color-light: #f2f2f2;
+}
+
+/* Formulario general */
 form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #222;
-    border-radius: 10px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
-    color: #fff;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: var(--color-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  color: var(--color-text);
+  font-family: 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Etiquetas */
 form label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
-    font-size: 1rem;
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text);
 }
 
+/* Campos de entrada */
 form input[type="text"],
 form input[type="email"],
 form input[type="password"] {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #444;
-    border-radius: 5px;
-    background-color: #181818;
-    color: #fff;
-    font-size: 1rem;
-    box-sizing: border-box;
-    display: block;
-    margin-left: auto;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-dark-bg);
+  color: #fff;
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
 }
 
+form input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+/* Agrupaciones */
 form .input-group {
-    margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 form .input-group label {
-    margin-bottom: 5px;
+  margin-bottom: 5px;
+  color: var(--color-text);
 }
 
-
+/* Botón principal */
 form button {
-    width: 100%;
-    padding: 10px;
-    background-color: red;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+  width: 100%;
+  padding: 12px;
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 form button:hover {
-    background-color: #ff0000;
-    transform: scale(1.05);
+  background-color: var(--color-primary-hover);
+  transform: scale(1.03);
 }
 
+/* Texto auxiliar */
 form p {
-    text-align: center;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.95rem;
 }
