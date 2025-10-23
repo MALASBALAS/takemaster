@@ -1,0 +1,70 @@
+/* Modo oscuro */
+body.dark-mode {
+  --color-bg: #121212;
+  --color-text-light: #e0e0e0;
+  --color-text-dark: #e0e0e0;
+  --color-text: #e0e0e0;
+  --color-primary: #339CFF;
+  --color-primary-hover: #5ab1ff;
+  --color-dark-bg: #1e1e1e;
+  --color-panel: #222222;
+  --color-panel-alt: #2a2a2a;
+  --color-border: #444444;
+  --color-muted: #999999;
+  --color-light: #1e1e1e;
+  --color-success: #27AE60;
+  --color-error: #E74C3C;
+  --color-table-even: #1e1e1e;
+  --color-table-odd: #292929;
+  --color-list-marker: #5ab1ff; /* cambia el color de los indicadores en modo oscuro */
+}
+
+/* Algunos ajustes extras */
+body.dark-mode a {
+  color: var(--color-primary);
+}
+
+body.dark-mode a:hover {
+  color: var(--color-primary-hover);
+}
+
+body.dark-mode table td {
+  background-color: var(--color-light);
+  color: var(--color-text);
+}
+
+body.dark-mode .header {
+  color: var(--color-text-light);
+}
+
+body.dark-mode .topnav {
+  background-color: var(--color-panel);
+}
+
+body.dark-mode .footer {
+  background-color: var(--color-border);
+  color: var(--color-text-light);
+}
+
+body.dark-mode form {
+  background-color: var(--color-dark-bg);
+  color: var(--color-text-light);
+}
+
+body.dark-mode form input[type="text"],
+body.dark-mode form input[type="email"],
+body.dark-mode form input[type="password"],
+body.dark-mode form input {
+  background-color: var(--color-dark-bg);
+  color: var(--color-text-light);
+  border-color: var(--color-border);
+}
+
+body.dark-mode form button {
+  background-color: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+body.dark-mode form button:hover {
+  background-color: var(--color-primary-hover);
+}
