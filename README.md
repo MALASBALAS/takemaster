@@ -1,4 +1,4 @@
-# TAKEMASTER
+# TAKEMASTER - GRUPO 5 ALVARO BALAS Y MIGUEL ANGEL PRIETO 
 
 Aplicación web en PHP para gestión y visualización de información, con frontend HTML/CSS/JS y backend PHP (mysqli) sobre MariaDB.
 
