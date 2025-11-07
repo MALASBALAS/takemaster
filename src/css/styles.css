@@ -125,47 +125,19 @@ a:hover {
 }
 
 /* Barra de navegación fija */
-.topnav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background-color: var(--color-panel);
-  z-index: 1000;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-}
-.topnav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw; /* ocupa toda la pantalla */
-  background-color: var(--color-panel);
-  z-index: 1000;
-  display: flex;
-  justify-content: center; /* centra el contenedor interno */
-  align-items: center;
-  padding: 10px 0;
+.topnav{
+  position:fixed;
+  top:0;left:0;right:0;
+  background-color:var(--color-panel);
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  padding:8px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 /* centra el nav */
-.topnav-container {
-  width: 100%;
-  max-width: 1200px; /* igual que .container */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px; /* margen interno */
-}
-.topnav-container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  position: relative; /* Para posicionar elementos absolutos */
-}
+/* Optional container inside topnav if markup uses it */
+.topnav-container{width:100%;max-width:1200px;margin:0 auto;display:flex;align-items:center;padding:0 12px}
 
 /* Centrar los enlaces del menú */
 .menu-links {
@@ -174,12 +146,7 @@ a:hover {
   gap: 15px;
 }
 
-/* Mantener el botón "Iniciar sesión" en la esquina derecha */
-.topnav-right {
-  position: absolute;
-  right: 20px; /* Igual que padding del contenedor */
-  /* Puedes ajustar top si quieres para alinear vertical */
-}
+.topnav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
 
 
 .topnav button {
@@ -235,6 +202,7 @@ a:hover {
   position: absolute;
   top: 100%;
   right: 0;
+  left: auto;
   background-color: var(--color-panel);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   min-width: 200px;
@@ -257,6 +225,34 @@ a:hover {
 
 .dropdown:hover .dropdown-content {
   display: block;
+}
+
+/* NAVBAR FIXES: override global 'a { width:50% }' and prevent username truncation */
+.topnav a,
+.topnav .dropbtn,
+.topnav .menu-links a,
+.topnav .dropdown-content a {
+  width: auto !important;
+  max-width: 320px;
+}
+
+/* Allow dropdown content to grow/wrap so long usernames are visible instead of cut */
+.topnav .dropdown-content {
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  right: 8px;
+  left: auto;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Ensure the right side has breathing room and dropdown does not go off-screen */
+.topnav-right { padding-right: 10px; }
+
+@media (max-width: 480px) {
+  .topnav .menu-links { display: none; }
+  .topnav { padding-right: 8px; }
+  .topnav .dropbtn { padding: 8px 10px; }
 }
 
 /* Formularios generales */

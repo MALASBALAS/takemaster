@@ -1,105 +1,29 @@
-:root {
-  --color-bg: #808080;;
-  --color-text: #000000;
-  --color-primary: #007BFF;
-  --color-primary-hover: #339CFF;
-  --color-dark-bg: #181818;
-  --color-panel: #222222;
-  --color-panel-alt: #111111;
-  --color-border: #444444;
-  --color-muted: #666666;
-  --color-light: #f2f2f2;
-  --color-table-even: #f9f9f9;
-  --color-table-odd: #E6F2FF;
+/* style-table.css — sólo ajustes / overrides para tablas y inputs */
+
+:root{
+  --color-primary: #0b69ff;
+  --color-border: #e6e9ee;
+  --color-text: #1f2937;
+  --color-light: #ffffff;
+  --color-table-odd: #f3f7ff;
+  --color-table-even: #ffffff;
 }
 
-/* Tabla general */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 30px 0;
-  font-size: 16px;
-  text-align: left;
-  background-color: var(--color-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
-  overflow: hidden;
-}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px;text-align:left;background:var(--color-light);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(16,24,40,0.04)}
+thead th{background:var(--color-border);color:var(--color-text);font-weight:700;padding:12px 14px}
+td{padding:10px 12px;border-bottom:1px solid var(--color-border);vertical-align:middle}
+tbody tr:nth-child(odd){background:var(--color-table-odd)}
+tbody tr:nth-child(even){background:var(--color-table-even)}
 
-/* Encabezados */
-table th {
-  background-color: var(--color-border);
-  color: #fff;
-  font-weight: 600;
-  padding: 12px;
-  border-bottom: 1px solid var(--color-panel);
-}
+table input[type="text"],table input[type="number"],table select{width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px}
+table input:focus,table select:focus{border-color:var(--color-primary);outline:none;box-shadow:0 0 0 3px rgba(11,105,255,0.06)}
 
-/* Celdas */
-table td {
-  border-bottom: 1px solid var(--color-panel);
-  padding: 10px;
-  color: var(--color-text);
-  background-color: var(--color-light);
-}
+/* Small viewport tweaks */
+@media (max-width:768px){table{font-size:14px}button.button-submit{width:100%}}
 
-/* Alternancia de filas */
-table tbody tr:nth-child(odd) {
-  background-color: var(--color-table-odd);
-}
+/* Make header sticky if not already */
+thead th{position:sticky;top:0;z-index:3}
 
-table tbody tr:nth-child(even) {
-  background-color: var(--color-table-even);
-}
-
-/* Inputs dentro de tabla */
-table input[type="text"],
-table input[type="number"],
-table select {
-  width: 100%;
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  box-sizing: border-box;
-  transition: border-color 0.3s ease;
-}
-
-table input:focus,
-table select:focus {
-  border-color: var(--color-primary);
-  outline: none;
-}
-
-/* Total mensual */
-#total-mes {
-  text-align: center;
-  margin-top: 30px;
-  font-size: 18px;
-  color: var(--color-text);
-}
-
-#total-mes h2 {
-  font-size: 22px;
-  color: var(--color-primary);
-  margin-bottom: 10px;
-}
-
-#total-mes p {
-  font-size: 26px;
-  font-weight: bold;
-  color: var(--color-primary);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  table {
-    font-size: 14px;
-  }
-
-  button.button-submit {
-    width: 100%;
-  }
-}
+/* Action buttons */
+.btn-delete-row{border:1px solid rgba(239,68,68,0.15);background:#fff;color:var(--color-error);padding:6px 10px;border-radius:6px}
+.btn-delete-row:hover{background:var(--color-error);color:#fff}

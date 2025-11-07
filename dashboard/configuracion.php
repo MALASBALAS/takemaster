@@ -1,6 +1,6 @@
 <?php
-require __DIR__ . '/../src/nav/bootstrap.php';
-require __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../src/nav/bootstrap.php';
+require_once __DIR__ . '/../src/nav/db_connection.php';
 start_secure_session();
 
 // Verificación de inicio de sesión
@@ -91,7 +91,7 @@ function clean_input($data) {
 <head>
     <meta charset="UTF-8">
     <title>Configuración</title>
-    <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
 </head>
 <body>
     <h3>Configuración de la cuenta</h3>

@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>Registro</title>
-    <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <link rel="stylesheet" href="/src/css/style-form.css">
 </head>
 <body>

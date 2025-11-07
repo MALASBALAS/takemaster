@@ -21,7 +21,7 @@ if (isset($_SESSION['username'])) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/style.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top Nav</title>
 </head>
@@ -38,7 +38,6 @@ if (isset($_SESSION['username'])) {
         <a href="/index.php">Inicio</a>
         <a href="/pags/about.php">Sobre nosotros</a>
         <a href="/pags/contact.php">Contacto</a>
-        <a href="/pags/requisitos.html">Requisitos</a>
     </div>
     <!-- Botones derecha -->
     <div class="topnav-right">

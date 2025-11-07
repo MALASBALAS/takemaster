@@ -1,6 +1,6 @@
 <?php
-require __DIR__ . '/../src/nav/bootstrap.php';
-require __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../src/nav/bootstrap.php';
+require_once __DIR__ . '/../src/nav/db_connection.php';
 start_secure_session();
 
 header('Content-Type: application/json');
