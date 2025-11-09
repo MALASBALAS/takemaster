@@ -3,22 +3,12 @@
 
 **Equipo:** Álvaro Balas  y Miguel Ángel Prieto  
 **Asignatura:** Diseño de Interfaces Gráficas  
-**Profesor:** Mª Isabel López  
-**Fecha de Entrega:** 9 de noviembre de 2025  
 
 ---
 
 ## OBJETIVO RA4
 
 Evaluar la **usabilidad e implementación de criterios de diseño** en la interfaz gráfica del proyecto TAKEMASTER, siguiendo estándares ISO 9241, WCAG 2.1 y principios de Nielsen.
-
----
-
-## AUTOEVALUACIÓN RÚBRICA RA4
-
-### **RA4: Diseño de Interfaces con Usabilidad**
-
-**Puntuación Estimada: 14.8/16 (93% - EXCELENTE)**
 
 ---
 

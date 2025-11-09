@@ -115,7 +115,7 @@ El proyecto fue desarrollado de forma **colaborativa y equitativa**:
 
 ---
 
-## 📝 COMENTARIOS ADICIONALES
+## COMENTARIOS ADICIONALES
 
 ### Contribución de Álvaro Balas
 - Arquitectura general del proyecto

@@ -211,21 +211,3 @@ takemaster/
 | **Miguel Ángel Prieto** | CSS, diseño, UX |
 
 **Hoja de reparto:** Ver `documentacion/ADMINISTRATIVO/Hoja_Reparto.md`
-
----
-
-## NOTAS FINALES
-
-Este proyecto demuestra **competencia completa en RA1 (Diseño de Interfaces Gráficas)**:
-
-- Interfaz visual profesional (VS Code, layouts)
-- Ubicación correcta de componentes (responsive, flexible)
-- Personalización avanzada (colores, tipografía)
-- Eventos funcionales (JavaScript, validación, feedback)
-- Usabilidad mejorada (móvil, accesibilidad, seguridad)
-
----
-
-**Estado:** Listo para evaluación
-**Calificación Esperada:** 5/5 - EXCELENTE
-**Fecha:** 9 de noviembre de 2025  
