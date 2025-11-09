@@ -10,6 +10,7 @@ require_once __DIR__ . '/../src/nav/config.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sobre nosotros - TAKEMASTER</title>
+    <link rel="shortcut icon" href="<?= BASE_URL ?>/src/img/favicon.png" type="image/png">
      <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
     <link rel="shortcut icon" href="<?= BASE_URL ?>/balas.ico" type="image/x-icon">

@@ -18,6 +18,7 @@ $username = $_SESSION['username'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mi cuenta</title>
+    <link rel="shortcut icon" href="<?= BASE_URL ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <style>
         /* Layout: fixed left sidebar and content to the right */

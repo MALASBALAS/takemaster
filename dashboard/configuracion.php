@@ -92,6 +92,7 @@ function clean_input($data) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuración</title>
+    <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <style>
         /* Make the configuration form responsive inside the account panel */

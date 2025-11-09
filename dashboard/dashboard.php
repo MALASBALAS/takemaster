@@ -142,6 +142,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard - Mi cuenta</title>
+    <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
     <style>
@@ -366,7 +367,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
             $total_beneficio = $total_ingresos - $total_gastos;
             ?>
 
-            <div style="margin:14px 0;display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
+            <div style="margin:14px auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:600px;">
                 <div style="flex:0 0 220px;max-width:220px;">
                     <canvas id="chart-pie-all" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$total_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$total_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$total_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;" aria-label="Gráfico circular total gastos y beneficio"></canvas>
                 </div>

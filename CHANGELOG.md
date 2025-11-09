@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## 2025-11-09
+- **Responsive Design Completo:** Implementación integral de diseño responsivo en todas las páginas del proyecto.
+  - Añadido meta viewport `content="width=device-width, initial-scale=1"` a todas las páginas (10+ ficheros): `index.php`, `auth/login.php`, `auth/register.php`, `pags/micuenta.php`, `pags/miplantilla.php`, `pags/about.php`, `pags/contact.php`, `pags/privacy.php`, `pags/terms.php`, `dashboard/dashboard.php`, `dashboard/configuracion.php`
+  - Consolidación de media queries en `src/css/styles.css`: eliminadas duplicaciones y establecida jerarquía limpia (1024px → 768px → 480px)
+  - Escalado responsivo de tipografía: `html { font-size: 16px }` desktop → 18px en tablet/móvil mediante media queries
+  - Creada clase `.action-btn` reutilizable para botones de acción con estilos consistentes
+
+- **Hamburger Menu Móvil:** Menú desplegable funcional en dispositivos <768px con toggleado robusto.
+  - Implementado menú hamburguesa (☰) con tamaño táctil mínimo 44x44px para accesibilidad
+  - Refactorizado JavaScript en `src/nav/topnav.php` usando patrón IIFE con modo estricto
+  - Añadidos logs de debug en consola para verificación: "Menu toggle button found and wired!", "Toggle clicked!", "Menu is now: OPEN/CLOSED"
+  - Implementado sistema de clase `.active` con toggleado suave (`classList.toggle`)
+  - Atributos ARIA (`aria-expanded`) para mejor accesibilidad
+
+- **Navbar Color Consistency:** Corrección de inconsistencia donde navbar aparecía negra en algunas páginas.
+  - Cambio de background desde `var(--color-panel)` a hardcoded `#f5f5f5` (gris claro) en `.topnav`, `.dropdown .dropbtn`, `.dropdown-content`, `.menu-links`
+  - Aplicado en todas las páginas para garantizar coherencia visual
+
+- **Cookie Consent Dialog:** Persistencia de consentimiento de cookies en localStorage.
+  - Refactorizado JavaScript en `index.php` con manejo correcto de evento `DOMContentLoaded`
+  - Implementado `localStorage` para persistencia entre sesiones
+  - Botones aceptar/cerrar funcionales: guardan consentimiento y ocultan diálogo
+
+- **Documentación Actualizada:**
+  - README.md ampliado con sección "Responsive Design" incluyendo breakpoints, características móviles, instrucciones de testing y debugging
+  - Especificación de breakpoints: 480px (móvil), 768px (tablet), 1024px (desktop)
+  - Logs de debug documentados para verificación en DevTools
+
+- **Mejoras CSS:**
+  - Centro de `.menu-links` con `justify-content: center` y `flex: 1`
+  - Estilos mejorados para mobile: botones expandidos, padding aumentado, inputs y formularios responsivos
+  - Tablas con scroll horizontal en móviles
+
+- **Testing y Validación:**
+  - Todas las páginas verificadas para viewport meta y escalado correcto
+  - Hamburger menu testeado con DevTools (modo responsive)
+  - Cookie persistence validada en localStorage
+
 ## 2025-10-23
 - Actualizado el CSS principal por Miguel Ángel Prieto: nueva paleta de colores, mejora de contraste y coherencia visual en todos los componentes.
 - Refactorizados tamaños y jerarquía tipográfica para mayor legibilidad y estructura.

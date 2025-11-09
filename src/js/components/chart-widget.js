@@ -78,15 +78,24 @@
             btn.addEventListener('click', function(){
                 var target = this.dataset.target;
                 var mode = this.dataset.mode;
-                var chart = window.ChartWidgets[target];
-                var canvas = document.getElementById('chart-'+target);
-                if (!chart || !canvas) return;
+                // Build the correct canvas id from target
+                var canvasId = 'chart-' + target;
+                var chart = window.ChartWidgets[canvasId];
+                var canvas = document.getElementById(canvasId);
+                if (!chart || !canvas) {
+                    console.warn('ChartWidget filter: Chart or canvas not found for target', target, 'canvasId:', canvasId);
+                    return;
+                }
+                
+                var ingresosData = parseFloatSafe(canvas.dataset.ingresos);
+                var gastosData = parseFloatSafe(canvas.dataset.gastos);
+                
                 if (mode === 'both') {
-                    chart.data.datasets[0].data = [parseFloatSafe(canvas.dataset.ingresos)||0, parseFloatSafe(canvas.dataset.gastos)||0];
+                    chart.data.datasets[0].data = [ingresosData, gastosData];
                 } else if (mode === 'ingresos') {
-                    chart.data.datasets[0].data = [parseFloatSafe(canvas.dataset.ingresos)||0, 0];
+                    chart.data.datasets[0].data = [ingresosData, 0];
                 } else if (mode === 'gastos') {
-                    chart.data.datasets[0].data = [0, parseFloatSafe(canvas.dataset.gastos)||0];
+                    chart.data.datasets[0].data = [0, gastosData];
                 }
                 chart.update();
             });

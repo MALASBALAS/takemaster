@@ -459,6 +459,18 @@ table select:focus {
   justify-content: space-between;
 }
 
+.column h3 {
+  margin: 10px 0;
+  font-size: 1rem;
+}
+
+.column input[type="checkbox"],
+.column input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
 .left {
   background-color: var(--color-panel-alt);
 }
@@ -784,11 +796,26 @@ dialog::backdrop {
     width: 100%;
   }
   
+  /* Contacto: mantener horizontal pero más compacto */
   .row {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 20px 0;
   }
+  
   .column {
     width: 100%;
+    padding: 12px 8px;
+  }
+  
+  .column h3 {
+    font-size: 0.85rem;
+    margin: 5px 0;
+  }
+  
+  .column p {
+    margin: 5px 0;
   }
 }
 
@@ -857,6 +884,34 @@ dialog::backdrop {
   .action-btn { 
     padding: 13px 18px; 
     font-size: 1.05rem; 
+  }
+
+  /* Contacto: ultra compacto en pantallas muy pequeñas */
+  .row {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    margin: 15px 0;
+  }
+  
+  .column {
+    width: 100%;
+    padding: 8px 4px;
+  }
+  
+  .column h3 {
+    font-size: 0.75rem;
+    margin: 3px 0;
+  }
+  
+  .column p {
+    margin: 3px 0;
+  }
+  
+  .column input[type="checkbox"],
+  .column input[type="radio"] {
+    width: 16px;
+    height: 16px;
   }
 
   .footer {
