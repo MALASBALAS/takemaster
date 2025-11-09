@@ -57,3 +57,11 @@ coverage/
 logs/
 storage/
 uploads/
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.flv
+
