@@ -199,7 +199,7 @@ $username = $_SESSION['username'];
                                     <div class="container">
                                     <div class="content">
                                         <h3>Crear Plantilla</h3>
-                                        <form method="post">
+                                        <form id="form-crear-plantilla" method="post" action="<?php echo BASE_URL; ?>/funciones/crear_plantilla.php">
                                             <?php echo csrf_input(); ?>
                                             <input type="text" name="nombre_plantilla" placeholder="Nombre de la plantilla" required>
                                             <button type="submit" name="crear_plantilla" class="btn-crear-plantilla">Crear Nueva Plantilla</button>
@@ -222,6 +222,46 @@ $username = $_SESSION['username'];
                                     </div>
                                 </div>
                                 <script>
+                                // Manejar creación de plantilla con AJAX
+                                document.addEventListener('DOMContentLoaded', function(){
+                                    const form = document.getElementById('form-crear-plantilla');
+                                    if (form) {
+                                        form.addEventListener('submit', function(e){
+                                            e.preventDefault();
+                                            const submitBtn = form.querySelector('button[type="submit"]');
+                                            if (submitBtn) submitBtn.disabled = true;
+                                            
+                                            const formData = new FormData(form);
+                                            fetch(form.action, {
+                                                method: 'POST',
+                                                body: formData,
+                                                credentials: 'same-origin'
+                                            })
+                                            .then(resp => {
+                                                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                                                return resp.json();
+                                            })
+                                            .then(json => {
+                                                if (json.success) {
+                                                    if (window.Notice && typeof window.Notice.show === 'function') {
+                                                        window.Notice.show('success', 'Plantilla creada correctamente. Redirigiendo...', 2000);
+                                                    }
+                                                    setTimeout(function(){ window.location.href = json.redirect; }, 900);
+                                                } else {
+                                                    throw new Error(json.message || 'Error desconocido');
+                                                }
+                                            })
+                                            .catch(err => {
+                                                console.error('Error creando plantilla:', err);
+                                                if (window.Notice && typeof window.Notice.show === 'function') {
+                                                    window.Notice.show('error', 'Error al crear la plantilla: ' + err.message, 4000);
+                                                }
+                                                if (submitBtn) submitBtn.disabled = false;
+                                            });
+                                        });
+                                    }
+                                });
+                                
                                 function abrirPopup(plantillaId){ document.getElementById('popupCompartir').style.display='block'; window.currentPlantillaId=plantillaId; }
                                 function cerrarPopup(){ document.getElementById('popupCompartir').style.display='none'; }
                                 function compartirPlantilla(){

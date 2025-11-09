@@ -43,19 +43,19 @@ require_once __DIR__ . '/src/nav/config.php';
 </section>
 <hr>
 
-<section>
-    <div class="row">
-       <div class="column left solo-texto">
-    <h2 class="center">Nuestra misión</h2>
-    <p class="center">Desarrollamos una <b>herramienta intuitiva</b> que pone al profesional en el centro de su carrera.</p>
-</div>
-        <div class="column middle" >
-            <h2 class="center">Agilidad y simplicidad</h2>
-            <p class="center">Introduce tus datos de forma rápida y sin complicaciones, maximizando tu productividad.</p>
-            <a href="#NuestrosServicios" class="cta center">Conoce más</a>
+<section class="values-section">
+    <div class="values-container">
+        <div class="value-card">
+            <h2>Nuestra misión</h2>
+            <p>Desarrollamos una <b>herramienta intuitiva</b> que pone al profesional en el centro de su carrera.</p>
         </div>
-        <div class="column right" >
-            <h2 class="center">Gestión integral</h2>
+        <div class="value-card">
+            <h2>Agilidad y simplicidad</h2>
+            <p>Introduce tus datos de forma rápida y sin complicaciones, maximizando tu productividad.</p>
+            <a href="#NuestrosServicios" class="cta">Conoce más</a>
+        </div>
+        <div class="value-card">
+            <h2>Gestión integral</h2>
             <p>Supervisa tus jornadas laborales y tus ingresos con precisión para una planificación estratégica.</p>
             <a href="/pags/contact.php" class="cta">Más información</a>
         </div>
@@ -89,17 +89,17 @@ require_once __DIR__ . '/src/nav/config.php';
 <section class="center" id="NuestrosServicios">
     <h2>Servicios principales</h2>
     <p>Descubre en qué destacamos y organiza tus jornadas laborales y tus ingresos estimados.</p>
-    <div class="row">
-        <div class="column left" >
-            <h2 class="center">Registro diario</h2>
-            <p class="center">Registra tu actividad diaria de forma rápida y precisa para un control efectivo.</p>
+    <div class="services-container">
+        <div class="service-card">
+            <h2>Registro diario</h2>
+            <p>Registra tu actividad diaria de forma rápida y precisa para un control efectivo.</p>
         </div>
-        <div class="column middle" >
-            <h2 class="center">Planificación</h2>
-            <p class="center">Organiza tu trabajo mensual y anual para un seguimiento eficiente de tus actividades.</p>
+        <div class="service-card">
+            <h2>Planificación</h2>
+            <p>Organiza tu trabajo mensual y anual para un seguimiento eficiente de tus actividades.</p>
         </div>
-        <div class="column right" >
-            <h2 class="center">Proyección de ingresos</h2>
+        <div class="service-card">
+            <h2>Proyección de ingresos</h2>
             <p>Calcula tus ganancias esperadas de forma automática y precisa.</p>
         </div>
     </div>

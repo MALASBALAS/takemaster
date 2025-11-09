@@ -69,5 +69,4 @@ if (!function_exists('validate_csrf')) {
         return is_string($token) && hash_equals($_SESSION[CSRF_TOKEN_KEY] ?? '', $token);
     }
 }
-
 ?>
