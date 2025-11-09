@@ -77,9 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Iniciar sesión</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
-    <link rel="stylesheet" href="/src/css/style-form.css">
 </head>
 <body>
     <?php include __DIR__ . '/../src/nav/topnav.php';

@@ -27,3 +27,167 @@ thead th{position:sticky;top:0;z-index:3}
 /* Action buttons */
 .btn-delete-row{border:1px solid rgba(239,68,68,0.15);background:#fff;color:var(--color-error);padding:6px 10px;border-radius:6px}
 .btn-delete-row:hover{background:var(--color-error);color:#fff}
+/* --------------------------------------------------------------------------
+   Reglas específicas movidas desde plantillas/miplantilla.php (2025-11-08)
+   Estas reglas eran un bloque <style> inline en miplantilla.php. Se han
+   trasladado aquí para centralizar estilos y permitir cacheo por el navegador.
+--------------------------------------------------------------------------- */
+
+:root{
+  --bg:#ffffff;
+  --muted:#6b6b6b;
+  --accent:#2b7ae4;
+  --accent-600:#1f5fb8;
+  --border:#e6e6e6;
+  --success:#2ea44f;
+  --danger:#d64545;
+  --shadow: 0 8px 24px rgba(16,24,40,0.08);
+}
+
+body{background:var(--bg); color:#111; font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif; -webkit-font-smoothing:antialiased}
+.container.center{max-width:1400px; margin:18px auto; padding:22px}
+
+/* Local form sizing */
+#form-guardar-plantilla { width: 86vw; max-width: 1400px; box-sizing: border-box; margin: 0 auto; padding: 14px; }
+
+/* Make tables horizontally scrollable on small screens */
+table{width:100%; border-collapse:collapse; border:1px solid var(--border); background:#fff; min-width:720px}
+.table-wrapper{overflow:auto; border-radius:8px}
+th, td{border-bottom:1px solid var(--border); padding:12px 14px; vertical-align:middle}
+th{background:#fafafa; font-weight:700; text-align:left; color:#222}
+tr:last-child td{border-bottom:none}
+
+/* Form controls */
+input[type="text"], input[type="number"], textarea, select, input[type="date"]{
+  width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:15px; background:#fff;
+}
+textarea{min-height:72px}
+
+/* Date input tweaks: slightly larger, more tap-friendly */
+input[type="date"]{padding:8px 12px; height:44px}
+input[type="date"]:focus, input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus{outline:2px solid rgba(43,122,228,0.12); border-color:var(--accent-600)}
+
+/* Specific tweaks for the per-row description select so it doesn't collapse */
+.descripcion-trabajo-select{min-width:300px; max-width:480px}
+/* Make inputs inside table cells align nicely when using flex containers */
+#tabla-trabajo td input[type="text"], #tabla-trabajo td input[type="number"], #tabla-trabajo td input[type="date"]{width:100%;}
+#tabla-trabajo td select{width:100%;}
+
+/* Buttons */
+.button-submit{
+  background: linear-gradient(180deg,var(--accent) 0%, var(--accent-600) 100%);
+  color:#fff; border:none; padding:10px 18px; border-radius:12px; cursor:pointer; font-weight:700; box-shadow:var(--shadow); transition:transform .06s ease, box-shadow .12s ease;
+}
+.button-submit:hover{ transform:translateY(-1px); box-shadow:0 14px 34px rgba(43,122,228,0.12)}
+.button-submit:active{ transform:translateY(0); box-shadow:var(--shadow)}
+.button-submit[type="button"]{background:#f3f4f6; color:#111; border:1px solid var(--border); box-shadow:none}
+
+.btn-delete-row{background:#fff; border:1px solid #f0c7c2; color:var(--danger); padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:600}
+.btn-delete-row:hover{background:#ffecec}
+/* Ensure any action buttons center their text and align icon+label */
+.action-btn, .btn-delete-row, .button-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Export menu */
+.export-menu{min-width:220px; border-radius:8px; padding:6px 6px}
+.export-menu .export-item{padding:10px 14px; display:block; width:100%; text-align:left}
+
+/* Save status */
+.save-status{margin-left:10px}
+.save-status .status-text{font-size:0.95em; color:var(--muted)}
+.save-status.saved .status-text{color:var(--success)}
+.save-status.error .status-text{color:var(--danger)}
+
+/* Responsive tweaks: tablets */
+@media (max-width:1024px){
+  #form-guardar-plantilla{ width:94vw }
+  th, td{padding:10px}
+  table{min-width:680px}
+}
+
+/* Responsive tweaks: mobile */
+@media (max-width:600px){
+  /* Increase scale for small devices */
+  .container.center{padding:14px}
+  #form-guardar-plantilla{ width:90vw; padding:12px }
+  th, td{padding:10px 12px; font-size:16px}
+  /* Make table horizontally scrollable instead of squashing */
+  table{min-width:640px}
+  .button-submit{width:100%; display:block; font-size:18px; padding:12px 16px}
+  /* Ensure action buttons center their text */
+  .button-submit, .btn-delete-row, .export-item { text-align: center; }
+  input[type="date"]{height:48px}
+  /* Increase tappable area for row actions */
+  .btn-delete-row{padding:12px 14px}
+}
+
+/* Mobile/tablet overrides to improve legibility */
+@media (max-width: 768px) {
+  /* Slightly larger controls on narrow viewports */
+  table { font-size: 17px; }
+  th, td { padding: 14px; }
+  table input[type="text"], table input[type="number"], table select { padding: 12px; font-size: 16px; }
+  .button-submit { font-size: 18px; padding: 14px 18px; }
+  .table-wrapper { overflow: auto; }
+}
+
+@media (max-width: 480px) {
+  /* Mobile narrow — make cards and fields larger */
+  table { font-size: 17px; }
+  thead { display: none; }
+  tbody tr td::before { font-size: 1rem; }
+  table input, table select, textarea { font-size: 17px; padding: 12px; }
+  .button-submit { font-size: 18px; padding: 12px 16px; }
+}
+
+/* Small helper */
+.muted{color:var(--muted); font-size:0.95em}
+
+/* --------------------------------------------------------------------------
+   Mobile-first responsive stack view for tables
+   On narrow viewports we hide the table header and show each row as a card.
+   We add pseudo-labels per column (hardcoded) so no HTML changes are necessary.
+--------------------------------------------------------------------------- */
+@media (max-width:720px){
+  table{min-width:unset;border-radius:8px;background:transparent;border:none;box-shadow:none}
+  thead{display:none}
+  tbody{display:block}
+  tbody tr{display:block;border:1px solid var(--color-border);padding:12px;margin-bottom:12px;border-radius:10px;background:var(--color-light)}
+  tbody tr td{display:flex;flex-direction:row;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:none}
+  /* label column (left) and value (right) widths */
+  tbody tr td::before{display:block;flex:0 0 42%;color:var(--muted);font-weight:600;padding-right:8px}
+  tbody tr td > *{flex:1 1 58%}
+
+  /* Column labels for trabajo table */
+  #tabla-trabajo tbody tr td:nth-child(1)::before{content:"Estudio"}
+  #tabla-trabajo tbody tr td:nth-child(2)::before{content:"Comentario"}
+  #tabla-trabajo tbody tr td:nth-child(3)::before{content:"Tipo"}
+  #tabla-trabajo tbody tr td:nth-child(4)::before{content:"Fecha"}
+  #tabla-trabajo tbody tr td:nth-child(5)::before{content:"CGs"}
+  #tabla-trabajo tbody tr td:nth-child(6)::before{content:"Takes"}
+  #tabla-trabajo tbody tr td:nth-child(7)::before{content:"Total"}
+  #tabla-trabajo tbody tr td:nth-child(8)::before{content:"Acciones"}
+
+  /* Gastos tables labels */
+  #tabla-gastos-variables tbody tr td:nth-child(1)::before{content:"Tipo"}
+  #tabla-gastos-variables tbody tr td:nth-child(2)::before{content:"Descripcion"}
+  #tabla-gastos-variables tbody tr td:nth-child(3)::before{content:"Monto"}
+  #tabla-gastos-variables tbody tr td:nth-child(4)::before{content:"Acciones"}
+
+  #tabla-gastos-fijos tbody tr td:nth-child(1)::before{content:"Tipo"}
+  #tabla-gastos-fijos tbody tr td:nth-child(2)::before{content:"Descripcion"}
+  #tabla-gastos-fijos tbody tr td:nth-child(3)::before{content:"Monto"}
+  #tabla-gastos-fijos tbody tr td:nth-child(4)::before{content:"Acciones"}
+
+  /* Make inputs and buttons more tappable */
+  table input, table select, table textarea{font-size:15px;padding:10px}
+  .button-submit{padding:12px 14px;border-radius:10px}
+  .btn-delete-row{padding:10px 12px}
+
+  /* Export menu becomes full width block */
+  .export-menu{position:static;box-shadow:none;width:100%;border-radius:8px;margin-top:8px}
+}

@@ -3,7 +3,7 @@ require_once __DIR__ . '/../src/nav/bootstrap.php';
 require_once __DIR__ . '/../src/nav/db_connection.php';
 start_secure_session();
 
-// If user is not logged in, send to login
+// Si el usuario no ha iniciado sesión, redirigir al login
 if (!isset($_SESSION['username'])) {
     header("Location: /auth/login.php");
     exit;

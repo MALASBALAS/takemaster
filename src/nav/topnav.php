@@ -2,6 +2,12 @@
 require_once __DIR__ . '/bootstrap.php';
 start_secure_session();
 
+// Evitar el renderizado doble cuando el archivo se incluye varias veces
+if (defined('TOPNAV_INCLUDED')) {
+    return;
+}
+define('TOPNAV_INCLUDED', true);
+
 // Comprobación de inicio de sesión
 if (isset($_SESSION['username'])) {
     $username = htmlspecialchars($_SESSION['username']);
@@ -17,6 +23,14 @@ if (isset($_SESSION['username'])) {
 }
 ?>
 
+<?php
+// Si la constante RENDER_FULL_PAGE está definida y es true, emitir el wrapper
+// HTML completo (útil cuando se accede directamente a este archivo). Cuando se
+// incluye desde otras páginas (uso normal), solo emitir el fragmento de
+// navegación para evitar etiquetas DOCTYPE/HEAD/BODY duplicadas.
+$renderFull = defined('RENDER_FULL_PAGE') && RENDER_FULL_PAGE;
+if ($renderFull) :
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -26,39 +40,77 @@ if (isset($_SESSION['username'])) {
     <title>Top Nav</title>
 </head>
 <body>
-    <!-- Menu Arriba -->
-    <div class="topnav">
-    <div class="menu-toggle" onclick="toggleMenu()">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
-    <div class="menu-links">
+<?php endif; ?>
+
+<!-- Menu Arriba -->
+<nav class="topnav" role="navigation" aria-label="Navegación principal">
+    <button class="menu-toggle" id="main-menu-toggle" aria-expanded="false" aria-controls="main-menu" aria-label="Abrir menú" type="button">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </button>
+    <div class="menu-links" id="main-menu">
         <!-- Botones izquierda -->
         <a href="/index.php">Inicio</a>
         <a href="/pags/about.php">Sobre nosotros</a>
         <a href="/pags/contact.php">Contacto</a>
     </div>
     <!-- Botones derecha -->
-    <div class="topnav-right">
+    <div class="topnav-right" role="region" aria-label="Acciones de usuario">
         <div class="dropdown">
             <?php echo $boton; ?>
         </div>
     </div>
+</nav>
+
+
+<!-- Imagen header -->
+<div class="header">
+    <img onclick="location.href='/index.php'" src="/img/TAKEMASTER2.png" alt="Logotipo de TAKEMASTER" width="50" height="50">
+    <h1>TAKEMASTER</h1>
 </div>
-
-
-    <!-- Imagen header -->
-    <div class="header">
-        <img onclick="location.href='/index.php'" src="/img/TAKEMASTER2.png" alt="Logotipo de TAKEMASTER" width="50" height="50">
-        <h1>TAKEMASTER</h1>
-    </div>
-    <!-- Boton inicio de sesion, cambiar si esta iniciado sesion o no -->
-    <script>
-        function toggleMenu() {
-            const menu = document.querySelector('.menu-links');
+<!-- Boton inicio de sesion, cambiar si esta iniciado sesion o no -->
+<script>
+(function() {
+    'use strict';
+    
+    function toggleMenu(e) {
+        if (e) e.preventDefault();
+        const menu = document.getElementById('main-menu');
+        const toggle = document.getElementById('main-menu-toggle');
+        
+        console.log('Toggle clicked!', menu, toggle); // Debug
+        
+        if (menu) {
             menu.classList.toggle('active');
+            if (toggle) {
+                const isExpanded = menu.classList.contains('active');
+                toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                console.log('Menu is now:', isExpanded ? 'OPEN' : 'CLOSED'); // Debug
+            }
         }
-    </script>
+    }
+    
+    // Wire the button when DOM is ready
+    function init() {
+        const toggleBtn = document.getElementById('main-menu-toggle');
+        if (toggleBtn) {
+            console.log('Menu toggle button found and wired!'); // Debug
+            toggleBtn.addEventListener('click', toggleMenu);
+        } else {
+            console.warn('Menu toggle button NOT found!'); // Debug
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+
+<?php if ($renderFull) : ?>
 </body>
 </html>
+<?php endif; ?>

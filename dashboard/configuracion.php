@@ -90,8 +90,21 @@ function clean_input($data) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuración</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
+    <style>
+        /* Make the configuration form responsive inside the account panel */
+        form { max-width: 800px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .input-group { display:block; width:100%; margin-bottom:12px }
+        .input-group label{display:block;margin-bottom:6px}
+        input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:10px;border-radius:6px;border:1px solid var(--color-border);box-sizing:border-box}
+        .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:var(--color-primary);color:#fff;border:none}
+        @media (max-width:600px){
+            form{padding:6px}
+            .btn{width:100%}
+        }
+    </style>
 </head>
 <body>
     <h3>Configuración de la cuenta</h3>

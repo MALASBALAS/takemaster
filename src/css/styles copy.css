@@ -28,15 +28,10 @@
   box-sizing: border-box;
 }
 
-html {
-  font-size: 16px; /* Base para escritorio */
-}
-
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 16px;
   margin: 2px 10px;
   padding: 0;
   overflow-x: hidden;
@@ -47,9 +42,9 @@ body {
 a {
   color: var(--color-primary);
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   margin: auto;
-  width: auto; /* changed from 50% to avoid mobile issues */
+  width: 50%;
   text-decoration: none;
   transition: color 0.3s ease;
 }
@@ -64,8 +59,7 @@ a:hover {
   margin: 0 auto;
   background-color: var(--color-primary);
   color: var(--color-text-light);
-  padding: 12px 24px;
-  font-size: 1rem;
+  padding: 10px 20px;
   border-radius: 5px;
   transition: background-color 0.3s ease;
 }
@@ -130,82 +124,86 @@ a:hover {
   color: var(--color-text);
 }
 
-/* Barra de navegación fija (imported/adjusted from styles copy.css) */
+/* Barra de navegación fija */
 .topnav {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  background-color: #f5f5f5; /* Always light gray, never black */
+  background-color: var(--color-panel);
   z-index: 1000;
   display: flex;
-  justify-content: space-between; /* Changed: space between for better layout */
+  justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  flex-wrap: wrap; /* Allow wrapping for mobile menu */
 }
-
-/* contenedor interno opcional dentro del topnav */
+.topnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%; /* ocupa toda la pantalla */
+  background-color: var(--color-panel);
+  z-index: 1000;
+  display: flex;
+  justify-content: center; /* centra el contenedor interno */
+  align-items: center;
+  padding: 10px 0;
+}
+/* centra el nav */
 .topnav-container {
   width: 100%;
   max-width: 1200px; /* igual que .container */
-  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 20px; /* margen interno */
-  position: relative; /* Para posicionar elementos absolutos */
 }
-
-/* Hide hamburger by default on larger screens; shown via media query on small screens */
-.menu-toggle { 
-  display: none; 
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 12px;
-  z-index: 1001;
-  order: -1; /* Show first on mobile */
-  min-width: 44px; /* Minimum tap target size */
-  min-height: 44px;
+.topnav-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.menu-toggle span {
-  display: block;
-  width: 28px;
-  height: 3px;
-  background-color: var(--color-text);
-  margin: 4px 0;
-  transition: 0.3s;
+  position: relative; /* Para posicionar elementos absolutos */
 }
 
 /* Centrar los enlaces del menú */
 .menu-links {
+  margin: 0 auto; /* Esto centra el bloque en flex */
   display: flex;
   gap: 15px;
-  align-items: center;
-  justify-content: center; /* Center the links */
-  flex: 1; /* Take available space to center properly */
-  margin: 0; /* Remove auto margin */
+}
+
+/* Hide hamburger by default on larger screens; shown via media query on small screens */
+.menu-toggle { display: none; }
+
+/* Mantener el botón "Iniciar sesión" en la esquina derecha */
+.topnav-right {
+  position: absolute;
+  right: 20px; /* Igual que padding del contenedor */
+  /* Puedes ajustar top si quieres para alinear vertical */
 }
 
 
 .topnav button {
   color: var(--color-text);
-  padding: 10px 15px;
-  font-size: 15px;
+  padding: 12px 16px; /* larger tap target */
+  font-size: 17px; /* slightly larger for readability */
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* Menú y dropdown - removed duplicate .menu-links definition */
+/* Menú y dropdown */
+.menu-links {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
 .menu-links a {
   color: var(--color-text);
   padding: 10px 15px;
   font-size: 15px;
   transition: background-color 0.3s, color 0.3s;
-  text-decoration: none;
 }
 
 .menu-links a:hover {
@@ -216,7 +214,6 @@ a:hover {
 .topnav-right {
   display: flex;
   align-items: center;
-  margin-left: auto; /* Push to the right */
 }
 
 .dropdown {
@@ -224,7 +221,7 @@ a:hover {
 }
 
 .dropdown .dropbtn {
-  background-color: #f5f5f5; /* Always light gray */
+  background-color: var(--color-panel);
   border: none;
   color: var(--color-text);
   cursor: pointer;
@@ -241,8 +238,7 @@ a:hover {
   position: absolute;
   top: 100%;
   right: 0;
-  left: auto;
-  background-color: #f5f5f5; /* Always light gray */
+  background-color: var(--color-panel);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   min-width: 200px;
   z-index: 10;
@@ -251,7 +247,7 @@ a:hover {
 
 .dropdown-content a {
   display: block;
-  background-color: #f5f5f5; /* Always light gray */
+  background-color: var(--color-panel);
   color: var(--color-text);
   padding: 12px 16px;
   text-decoration: none;
@@ -273,7 +269,6 @@ a:hover {
 .topnav .dropdown-content a {
   width: auto !important;
   max-width: 320px;
-  font-size: 15px; /* Desktop base size */
 }
 
 /* Allow dropdown content to grow/wrap so long usernames are visible instead of cut */
@@ -288,6 +283,12 @@ a:hover {
 
 /* Ensure the right side has breathing room and dropdown does not go off-screen */
 .topnav-right { padding-right: 10px; }
+
+@media (max-width: 480px) {
+  .topnav .menu-links { display: none; }
+  .topnav { padding-right: 8px; }
+  .topnav .dropbtn { padding: 8px 10px; }
+}
 
 /* Formularios generales */
 form {
@@ -461,14 +462,35 @@ table select:focus {
 
 .left {
   background-color: var(--color-panel-alt);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
+.left h2 {
+  margin-bottom: 20px;
+}
+
+.left p {
+  margin-top: auto;
+  margin-bottom: auto;
+}
 .middle {
   background-color: var(--color-panel);
 }
 
 .right {
   background-color: var(--color-panel-alt);
+}
+
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+  }
+  .column {
+    width: 100%;
+  }
 }
 
 /* Centrados */
@@ -478,12 +500,13 @@ table select:focus {
 
 /* Footer */
 .footer {
-  background-color: var(--color-border);
+  background-color: var(--color-bg); /* light footer */
   color: var(--color-text);
-  padding: 20px 0;
+  padding: 22px 0;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   margin: 0 -10px;
+  border-top: 1px solid var(--color-border);
 }
 
 .footer hr {
@@ -573,22 +596,43 @@ table select:focus {
 /* Botón submit personalizado */
 .button-submit {
   background-color: var(--color-panel);
-  border-radius: 4px;
+  border-radius: 6px;
   border: none;
   color: var(--color-text);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17px; /* larger CTA */
   font-weight: 700;
-  line-height: 1.5;
-  padding: 9px 20px 8px;
+  line-height: 1.45;
+  padding: 12px 22px;
   text-align: center;
   width: 100%;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.08s ease;
 }
 
 .button-submit:hover,
 .button-submit:focus {
   opacity: 0.75;
+}
+
+/* Generic action button used across templates (centers its content/text) */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px; /* small gap for icon + label */
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* make action buttons full-width on small viewports for easier taps */
+@media (max-width: 768px) {
+  .action-btn { width: 100%; padding: 12px 14px; }
 }
 
 /* Popup (dialog) */
@@ -607,144 +651,44 @@ dialog::backdrop {
   background-color: rgba(0, 0, 0, 0.777);
 }
 
-/* Cookie dialog: mobile-first responsive styling */
-#cookie-popup {
-  width: 100%;
-  max-width: 520px; /* desktop cap */
-  border: none;
-  border-radius: 12px;
-  padding: 18px;
-  background: var(--color-panel);
-  color: var(--color-text);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-}
-
-#cookie-popup::backdrop {
-  background: rgba(0,0,0,0.6);
-}
-
-#cookie-popup .cookie-content { gap: 10px; display: flex; flex-direction: column; }
-
-#cookie-popup p { margin: 0 0 8px 0; font-size: 1rem; line-height: 1.4; }
-
-#cookie-popup .cookie-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:8px; }
-
-#cookie-popup .cookie-actions button {
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-#cookie-popup .btn-accept { background: var(--color-primary); color: var(--color-light); }
-#cookie-popup .btn-exit { background: transparent; color: var(--color-text); border: 1px solid rgba(0,0,0,0.08); }
-
-/* Mobile adjustments: full-width, stacked buttons for easy tapping */
-@media (max-width: 480px) {
-  #cookie-popup { width: calc(100% - 24px); padding: 16px; margin: 0 auto; border-radius: 12px; }
-  #cookie-popup .cookie-actions { flex-direction: column-reverse; gap: 10px; }
-  #cookie-popup .cookie-actions button { width: 100%; padding: 14px; font-size: 1.05rem; }
-  #cookie-popup p { font-size: 1.05rem; }
-}
-
-/* Small tablet: slightly larger dialog */
-@media (min-width: 481px) and (max-width: 768px) {
-  #cookie-popup { max-width: 640px; padding: 18px; }
-  #cookie-popup p { font-size: 1.05rem; }
-}
-
-/* Accessibility helpers inside dialog */
-#cookie-popup [role="document"] { outline: none; }
-
-/* ============================================
-   RESPONSIVE BREAKPOINTS (Mobile-First Tweaks)
-   ============================================ */
-
-/* Tablet landscape and smaller (1024px and below) */
-@media (max-width: 1024px) {
-  html { font-size: 17px; }
-  body { font-size: 17px; }
-  
-  .header h1 { font-size: 2.2rem; }
-  .cta { font-size: 1.1rem; padding: 12px 24px; }
-  
-  .topnav .dropbtn, 
-  .topnav button, 
-  .menu-links a { font-size: 16px; padding: 11px 15px; }
-  
-  .button-submit, 
-  form button { font-size: 1rem; padding: 13px; }
-}
-
-/* Tablet portrait and smaller (768px and below) */
+/* Responsive Design */
 @media (max-width: 768px) {
-  html { font-size: 18px; }
-  body { font-size: 18px; }
-  
-  .header h1 { font-size: 2rem; }
-  .header p { font-size: 1.1rem; }
-  
-  .cta { font-size: 1.15rem; padding: 14px 26px; }
-  
-  .button-submit { font-size: 1.05rem; padding: 14px 20px; border-radius: 8px; }
-  
-  table { font-size: 15px; }
-  
-  .action-btn { padding: 12px 20px; font-size: 1.05rem; border-radius: 9px; }
-  
-  /* Mobile navbar: hamburger menu */
-  .topnav {
-    justify-content: space-between;
-    padding: 10px 15px;
-  }
-  
-  .menu-toggle {
-    display: flex !important; /* Force show hamburger */
-    flex-direction: column;
-    cursor: pointer;
-    order: -1; /* Show first */
-  }
-
-  .menu-toggle span {
-    width: 28px;
-    height: 3px;
-    background-color: var(--color-text);
-    transition: 0.3s;
-    display: block;
-  }
-  
+  /* Ajustes menú para móviles */
   .menu-links {
-    display: none; /* Hidden by default on mobile */
+    display: none;
     flex-direction: column;
     position: absolute;
     top: 100%;
     left: 0;
     width: 100%;
-    background-color: #f5f5f5;
-    padding: 10px 0;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    z-index: 999;
+    background-color: var(--color-panel);
   }
 
   .menu-links.active {
-    display: flex !important; /* Show when active */
+    display: flex;
   }
-  
-  .menu-links a {
-    padding: 12px 20px;
-    width: 100%;
-    text-align: left;
-    border-bottom: 1px solid #e0e0e0;
+
+  .menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
   }
-  
-  .menu-links a:last-child {
-    border-bottom: none;
+
+  .menu-toggle span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--color-text);
+    transition: 0.3s;
   }
 
   .dropdown-content {
     position: static;
     box-shadow: none;
+  }
+
+  .topnav {
+    flex-wrap: wrap;
   }
 
   .footer {
@@ -780,26 +724,16 @@ dialog::backdrop {
     margin: 0 5px;
   }
 
+  table {
+    font-size: 14px;
+  }
+
   button.button-submit {
-    width: 100%;
-  }
-  
-  .row {
-    flex-direction: column;
-  }
-  .column {
     width: 100%;
   }
 }
 
-/* Mobile phones (480px and below) */
 @media (max-width: 480px) {
-  html { font-size: 18px; } /* Keep readable but not too large */
-  body { 
-    font-size: 18px; 
-    margin: 6px 8px; 
-  }
-  
   .header {
     left: -10px;
   }
@@ -818,45 +752,7 @@ dialog::backdrop {
 
   a {
     font-size: 1rem;
-    max-width: 90%;
-  }
-  
-  .cta { 
-    font-size: 1.15rem; 
-    padding: 14px 24px; 
-    border-radius: 8px; 
-  }
-  
-  .menu-toggle span { width: 32px; height: 4px; }
-  
-  .topnav .menu-links { display: none; }
-  .topnav { padding-right: 8px; }
-  .topnav .dropbtn { padding: 10px 12px; font-size: 16px; }
-  .topnav button, 
-  .menu-links a { font-size: 16px; padding: 10px 12px; }
-  
-  .button-submit { 
-    font-size: 1.05rem; 
-    padding: 14px; 
-    border-radius: 10px; 
-  }
-  
-  form { padding: 20px; }
-  form input, 
-  form textarea { padding: 13px; font-size: 1rem; }
-  
-  #cookie-popup .cookie-actions button { 
-    font-size: 1rem; 
-    padding: 14px; 
-  }
-  
-  table td, 
-  table th { padding: 10px; }
-  table { font-size: 14px; }
-  
-  .action-btn { 
-    padding: 13px 18px; 
-    font-size: 1.05rem; 
+    width: 50%;
   }
 
   .footer {
@@ -877,44 +773,295 @@ dialog::backdrop {
   }
 
   .enlaces a {
-    font-size: 1rem;
+    font-size: 1.4rem;
   }
 
   .footer-bottom {
-    font-size: 0.85rem;
+    font-size: 1rem;
   }
 }
+/* Mobile-friendly size overrides: make UI elements larger and more tappable on narrow viewports */
+@media (max-width: 768px) {
+  /* Increase base scale for mobile/tablet so UI feels like a native mobile app (slightly larger for tablet) */
+  html { font-size: 30px; }
+  /* Make topnav taller and buttons centered */
+  .topnav { padding: 24px 0; }
+  .topnav-container { padding: 0 27px; }
+  .topnav .menu-links a, .topnav button { text-align: center; }
+  /* Increase tap targets in the topnav and menu links */
+  .topnav button, .menu-links a { font-size: 33px; padding: 24px 27px; }
+  .menu-toggle { display:flex; align-items:center; }
+  .menu-toggle span { width: 54px; height: 9px; }
+  /* Slightly larger card titles */
+  .plantilla-title { font-size: 2.1rem; }
+  /* Tables and form controls more readable */
+  table { font-size: 27px; }
+  input, select, textarea { font-size: 27px; padding: 21px; }
+  .button-submit { font-size: 30px; padding: 24px 33px; }
+  /* Make action buttons more touch-friendly on tablet-sized viewports */
+  .action-btn { font-size: 27px; padding: 21px 27px; border-radius:15px; }
+  .main-content { padding: 36px; }
+}
 
-ul {
-  list-style-position: inside;
+/* Variables globales */
+@media (max-width: 768px) {
+  /* Mobile/tablet sizes taken from the provided block: keep mobile behavior consistent */
+  .menu-links {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: var(--color-panel);
+  }
+
+  .menu-links.active {
+    display: flex;
+  }
+
+  .menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+  }
+
+  .menu-toggle span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--color-text);
+    transition: 0.3s;
+  }
+
+  .dropdown-content {
+    position: static;
+    box-shadow: none;
+  }
+
+  .topnav {
+    flex-wrap: wrap;
+  }
+
+  .footer {
+    padding: 15px 0;
+    font-size: 0.8rem;
+  }
+
+  .footer-container {
+    gap: 15px;
+  }
+
+  .footer-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .footer-column {
+    flex: none;
+    min-width: auto;
+    margin-bottom: 15px;
+  }
+
+  .footer-column h3 {
+    font-size: 1rem;
+  }
+
+  .footer-column ul li {
+    font-size: 0.8rem;
+  }
+
+  .social-icons a {
+    font-size: 1.2rem;
+    margin: 0 5px;
+  }
+
+  table {
+    font-size: 14px;
+  }
+
+  button.button-submit {
+    width: 100%;
+  }
+}
+ 
+
+.main-content {
+  margin-top: 80px;
+  padding: 20px;
+}
+
+/* Header */
+.header {
+  position: relative;
+  left: -20px;
+  width: calc(100% + 50px);
+  height: 300px;
+  padding: 0;
   text-align: center;
-  padding-left: 0;
+  background-image: url(/img/rode.jpeg);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--color-text);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  color:#ffffff;
+}
+
+
+
+@media (max-width: 480px) {
+  /* Mobile (narrow) — make everything larger and more touch-friendly */
+  /* Ensure body text is larger and readable on mobile devices */
+  html { font-size: 29px; }
+  body { font-size: 22px; }
+  .topnav button, .menu-links a { font-size: 30px; padding: 21px 24px; }
+  .menu-toggle span { width: 52px; height: 8px; }
+  .plantilla-title { font-size: 1.9rem; }
+  table { font-size: 26px; }
+  input, select, textarea { font-size: 26px; padding: 18px; }
+  .button-submit { font-size: 29px; padding: 21px 27px; border-radius:15px; }
+  /* Reduce header height on small screens so content appears sooner */
+  .header { height: 270px; }
+  .header h1 { font-size: 2.7rem; }
+  .header p { font-size: 1.5rem; }
+}
+ul {
+  list-style-position: inside; /* Hace que los puntos sigan el centrado del texto */
+  text-align: center;          /* Centra el texto */
+  padding-left: 0;             /* Quita espacio extra a la izquierda */
   margin: 10px 0;
 }
 
 li {
-  margin: 5px 0;
+  margin: 5px 0;               /* Espaciado entre ítems */
 }
 
-/* Action button reusable class */
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 10px 18px;
+/* Contenedor de la sección "Nuestra historia" */
+.about-history {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+    text-align: left;
+}
+
+/* Contenedor del texto */
+.about-history-text {
+    flex: 1 1 400px;
+    max-width: 600px;
+}
+
+/* Imagen alineada a la derecha */
+.about-history img {
+    flex: 1 1 300px;
+    max-width: 400px;
+    height: auto;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Centrado general para otras secciones */
+.center {
+    text-align: center;
+    margin: 2rem auto;
+    max-width: 800px;
+}
+
+/* --- Compatibility: keep project-specific additions from previous stylesheet --- */
+/* Ensure content is not hidden under fixed topnav */
+body{padding-top:64px}
+
+/* Container tweaks for plantilla panel (project-specific) */
+.container.center{max-width:1200px; margin:18px auto; padding:18px}
+
+/* Form panel styling for plantilla (overrides generic form) */
+#form-guardar-plantilla{
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,250,0.98));
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(16,24,40,0.06);
+  border: 1px solid var(--color-border);
+  padding: 18px;
+  margin: 12px auto;
+}
+
+@media (max-width: 1024px){
+  /* Tablet breakpoint: increase overall scale and paddings for tablet-like UIs */
+  html { font-size: 30px; }
+  body{padding-top:108px}
+  .container.center{padding:14px}
+  #form-guardar-plantilla{width:98%; max-width:980px}
+  /* Nav and menu adjustments for tablet */
+  .topnav { padding: 24px 0; }
+  .topnav-container { padding: 0 27px; }
+  .topnav button, .menu-links a { font-size: 32px; padding: 21px 24px; }
+  .menu-toggle span { width: 54px; height: 9px; }
+  /* Larger form controls and tables */
+  table { font-size: 27px; }
+  input, select, textarea { font-size: 27px; padding: 21px; }
+  .button-submit { font-size: 30px; padding: 24px 30px; }
+  .action-btn { font-size: 27px; padding: 21px 27px; }
+}
+
+@media (max-width: 480px){
+  body{padding-top:72px}
+  .container.center{padding:10px}
+  #form-guardar-plantilla{width:98%; padding:12px}
+}
+
+/* Responsive root-based sizing: use clamp() so typography and controls scale with viewport width.
+   This block uses rem-based sizes for common controls so the UI adapts to screen size
+   without relying on many fixed px values earlier in the stylesheet. */
+html {
+  /* Minimum 16px, fluid via vw, maximum 28px */
+  font-size: clamp(16px, 2.2vw, 28px) !important;
+}
+
+/* Keep body text relative to html: it will scale automatically */
+body { font-size: 1.05rem; }
+
+/* Convert common controls to rem-based sizes (these rules are intentionally placed
+   after previous declarations so they override px-based values higher in the file). */
+input, select, textarea, button, .button-submit {
   font-size: 1rem;
-  cursor: pointer;
-  background-color: var(--color-primary);
-  color: var(--color-light);
-  border: none;
 }
 
-/* Small improvement: ensure buttons in tables and action areas look consistent */
-.table-action, .btn, .btn-accept, .btn-exit, .button-submit { 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
+.button-submit {
+  padding: 0.9rem 1.2rem;
+}
+
+.action-btn {
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.8rem;
+}
+
+table { font-size: 0.95rem; }
+
+/* Slightly larger on very small phones if desired */
+@media (max-width: 360px) {
+  html { font-size: clamp(15px, 3.2vw, 22px) !important; }
+  body { font-size: 1.08rem; }
+  .button-submit, .action-btn { padding: 0.95rem 1.1rem; }
+}
+
+/* Ensure mobile-specific body size overrides the global rem-based rule above */
+@media (max-width: 480px) {
+  /* Use px here to guarantee a readable baseline on most phones */
+  body { font-size: 22px !important; }
+}
+
+/* Desktop (normal PC) baseline: ensure body text is comfortable on larger screens */
+@media (min-width: 769px) {
+  /* Use 18px baseline for desktop for consistency with original design */
+  body { font-size: 18px !important; }
 }

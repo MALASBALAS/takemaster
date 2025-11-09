@@ -8,57 +8,12 @@ require_once __DIR__ . '/../src/nav/config.php';
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sobre nosotros - TAKEMASTER</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/src/css/styles.css">
+     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
     <link rel="shortcut icon" href="<?= BASE_URL ?>/balas.ico" type="image/x-icon">
-    <style>
-        .center-image {
-            display: block;
-            margin: 20px auto;
-            max-width: 200px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-        }
-
-        .about-list ul {
-            list-style: none; 
-            padding: 0;
-        }
-
-        .about-list ul li::before {
-            content: "✔"; 
-            color: red;
-            margin-right: 10px;
-        }
-
-        .about-row {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .about-column {
-            flex: 1;
-            text-align: center;
-            background-color: #222;
-            padding: 15px;
-            border-radius: 10px;
-            color: #fff;
-        }
-
-        .about-column img {
-            width: 100%;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-
-        @media (max-width: 768px) {
-            .about-row {
-                flex-direction: column;
-            }
-        }
-    </style>
+   
 </head>
 
 <body>
@@ -82,7 +37,7 @@ require_once __DIR__ . '/../src/nav/config.php';
         </section>
         <hr>
 
-        <section class="about-row">
+        <section class="center">
             <div class="about-column">
                 <h2>Nuestro equipo</h2>
                 <p>
@@ -98,17 +53,19 @@ require_once __DIR__ . '/../src/nav/config.php';
         </section>
         <hr>
 
-        <section class="center about-list">
-            <h2>Nuestra historia</h2>
-            <img src="<?= BASE_URL ?>/img/DSC0075_512.jpg" alt="Álvaro Balas" class="center-image">
-            <p>Takemaster nació por una necesidad mía, <b>Álvaro Balas</b>, actor de doblaje que necesitaba una herramienta que:</p>
-            <ul>
-                <li>Agilizará el cálculo de ingresos.</li>
-                <li>Facilitará la organización del trabajo mensual.</li>
-                <li>Permitiera gestionar las actividades de doblaje desde cualquier dispositivo.</li>
-            </ul>
-            <p>Desde su lanzamiento, hemos ayudado a decenas de actores a reorganizarse mejor mensualmente.</p>
-        </section>
+        <section class="about-history">
+    <div class="about-history-text">
+        <h2 class="center">Nuestra historia</h2>
+        <p>Takemaster nació por una necesidad mía, <b>Álvaro Balas</b>, actor de doblaje que necesitaba una herramienta que:</p>
+        <ul>
+            <li>Agilizará el cálculo de ingresos.</li>
+            <li>Facilitará la organización del trabajo mensual.</li>
+            <li>Permitiera gestionar las actividades de doblaje desde cualquier dispositivo.</li>
+        </ul>
+        <p>Desde su lanzamiento, hemos ayudado a decenas de actores a reorganizarse mejor mensualmente.</p>
+    </div>
+    <img src="<?= BASE_URL ?>/img/DSC0075_512.jpg" alt="Álvaro Balas">
+</section>
         <hr>
 
         <section class="center">
