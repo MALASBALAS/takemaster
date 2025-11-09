@@ -1,5 +1,7 @@
 # TAKEMASTER - GRUPO 5 ALVARO BALAS Y MIGUEL ANGEL PRIETO 
 
+🌐 **Web activa actualmente en el dominio:** https://testtakemaster.balbe.xyz/
+
 Aplicación web en PHP para gestión y visualización de información, con frontend HTML/CSS/JS y backend PHP (mysqli) sobre MariaDB.
 
 ## Estado actual del proyecto
@@ -36,6 +38,31 @@ Aplicación web en PHP para gestión y visualización de información, con front
 - PHP 8.1+ (recomendado 8.3) con extensiones: mysqli, openssl, mbstring, json
 - MariaDB/MySQL
 - Servidor web (Nginx o Apache)
+
+## ⚠️ Requisitos de ejecución
+
+> **IMPORTANTE:** Esta aplicación es **difícil de ejecutar localmente** sin preparar correctamente la infraestructura. Requiere:
+
+### Infraestructura necesaria:
+1. **Servidor web configurado** (Nginx/Apache con PHP-FPM)
+2. **Base de datos MariaDB/MySQL** funcionando
+3. **Variables de entorno** o archivo `config.php` con credenciales
+4. **Certificado HTTPS** en producción (variables de sesión dependen de él)
+5. **Permisos de archivo** correctos en el servidor
+
+### Pasos para ejecutar localmente:
+1. Instalar PHP 8.1+ con extensiones necesarias
+2. Instalar y configurar MariaDB/MySQL
+3. Crear base de datos desde `takemaster_clean.sql`
+4. Configurar `src/nav/config.php` con credenciales correctas
+5. Configurar servidor web apuntando al directorio del proyecto
+6. Acceder a través de `http://localhost` (o tu configuración)
+
+### Recomendación:
+Para testing y evaluación, **es mejor usar la instancia activa en producción**:
+👉 https://testtakemaster.balbe.xyz/
+
+O usar Docker para replicar el ambiente fácilmente (no incluido en repo).
 
 ## Estructura del proyecto (resumen)
 - `index.php` – página de entrada (con diálogo de cookies persistente)
