@@ -8,4 +8,3 @@ function checkRole(int $required_role_id): void {
         die('Acceso denegado');
     }
 }
-?>

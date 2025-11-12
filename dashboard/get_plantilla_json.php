@@ -40,4 +40,3 @@ if (!empty($row['contenido'])) {
 
 echo json_encode(['success' => true, 'contenido' => $contenido]);
 exit;
-?>

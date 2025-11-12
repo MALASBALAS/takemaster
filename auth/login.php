@@ -120,6 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <br>
     <br>
+        <br>
+    <br>
     <?php include __DIR__ . '/../src/nav/footer.php'; ?>
 </body>
 </html>

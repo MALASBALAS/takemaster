@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test - Eliminar Plantilla</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .output { margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Test - Eliminar Plantilla Handler</h1>
+    
+    <div class="test-section">
+        <h2>1. Test del Handler</h2>
+        <p>
+            <label>
+                ID de Plantilla (a eliminar):
+                <input type="number" id="testPlantillaId" value="1" min="0">
+            </label>
+        </p>
+        <button onclick="testDeleteHandler()">Enviar Test Delete</button>
+        <div id="testOutput" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Información del Navegador</h2>
+        <div id="browserInfo" class="output"></div>
+    </div>
+
+    <script>
+        function logMessage(msg, isError = false) {
+            const output = document.getElementById('testOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = `[${timestamp}] ${msg}`;
+            output.textContent += line + '\n';
+            output.scrollTop = output.scrollHeight;
+            console.log(line);
+        }
+
+        function testDeleteHandler() {
+            const plantillaId = document.getElementById('testPlantillaId').value;
+            
+            if (!plantillaId || plantillaId < 1) {
+                logMessage('❌ Error: ID de plantilla inválido', true);
+                return;
+            }
+
+            const baseUrl = document.querySelector('meta[name="base-url"]')?.getAttribute('content') || '';
+            const handlerUrl = baseUrl ? (baseUrl + '/dashboard/eliminar_plantilla_handler.php') : '/dashboard/eliminar_plantilla_handler.php';
+            
+            logMessage('📤 Iniciando test...');
+            logMessage(`URL: ${handlerUrl}`);
+            logMessage(`Plantilla ID: ${plantillaId}`);
+            
+            const fd = new FormData();
+            fd.append('plantilla_id', plantillaId);
+            fd.append('csrf_token', 'test-token-' + Date.now()); // Token de prueba
+            
+            fetch(handlerUrl, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(resp => {
+                logMessage(`📊 HTTP ${resp.status} ${resp.statusText}`);
+                logMessage(`Content-Type: ${resp.headers.get('content-type')}`);
+                
+                if (!resp.ok) {
+                    return resp.text().then(text => {
+                        logMessage(`⚠️ Response no-OK:\n${text.substring(0, 500)}`, true);
+                        throw new Error(`HTTP ${resp.status}`);
+                    });
+                }
+                
+                return resp.json();
+            })
+            .then(json => {
+                logMessage(`✅ JSON recibido:`);
+                logMessage(JSON.stringify(json, null, 2));
+            })
+            .catch(err => {
+                logMessage(`❌ Error: ${err.message}`, true);
+                logMessage(`Stack: ${err.stack}`, true);
+            });
+        }
+
+        // Mostrar info del navegador
+        document.addEventListener('DOMContentLoaded', function() {
+            const info = document.getElementById('browserInfo');
+            info.textContent = 
+                `User Agent: ${navigator.userAgent}\n` +
+                `Location: ${window.location.href}\n` +
+                `Origin: ${window.location.origin}\n` +
+                `Base URL (meta): ${document.querySelector('meta[name="base-url"]')?.getAttribute('content') || 'NOT FOUND'}`;
+        });
+    </script>
+</body>
+</html>

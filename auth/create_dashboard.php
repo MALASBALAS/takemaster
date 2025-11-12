@@ -22,6 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+    }
+}
+?>
+
 <form method="POST">
     <?php echo csrf_input(); ?>
     <input type="text" name="dashboard_name" required placeholder="Nombre del Dashboard">

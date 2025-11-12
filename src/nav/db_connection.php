@@ -5,7 +5,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 try {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     $conn->set_charset('utf8mb4');
-} catch (mysqli_sql_exception $e) {
+    } catch (mysqli_sql_exception $e) {
     // En desarrollo, mostrar el mensaje de error real para facilitar la depuración. En producción mantener un mensaje genérico.
         http_response_code(500);
         if (defined('APP_ENV') && APP_ENV !== 'production') {
@@ -15,4 +15,3 @@ try {
         }
         die('Error de conexión a la base de datos.');
 }
-?>

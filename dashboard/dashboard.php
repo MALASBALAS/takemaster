@@ -47,19 +47,33 @@ $username = $_SESSION['username'];
 
 // Manejo de la creación y eliminación de plantillas
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log('[dashboard.php] POST request detected');
+    
     // Crear plantilla
     if (isset($_POST['crear_plantilla'])) {
+        error_log('[dashboard.php] crear_plantilla POST parameter found');
         if (!validate_csrf()) {
             http_response_code(400);
             die('CSRF inválido');
         }
-        $nombrePlantilla = $_POST['nombre_plantilla'];
         
-        $stmt = $conn->prepare("INSERT INTO plantillas (username, nombre) VALUES (?, ?)");
-        $stmt->bind_param("ss", $username, $nombrePlantilla);
-        $stmt->execute();
-        $plantillaId = $stmt->insert_id;
-        $stmt->close();
+        // Usar función de seguridad para crear plantilla con auditoría
+        require_once __DIR__ . '/../funciones/plantillas_security.php';
+        
+        $resultado = crear_plantilla_segura(
+            $conn,
+            $username,
+            $_POST['nombre_plantilla'],
+            [],
+            get_client_ip()
+        );
+        
+        if (!$resultado['success']) {
+            http_response_code(500);
+            die(json_encode(['success' => false, 'error' => $resultado['error']]));
+        }
+        
+        $plantillaId = $resultado['plantilla_id'];
 
     // Redirigir al editor de la plantilla recién creada tras una pequeña espera (1 segundo) para permitir feedback en la interfaz
     $redirectUrl = BASE_URL . '/plantillas/miplantilla.php?id=' . urlencode((string)$plantillaId);
@@ -68,9 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // renderice un banner inline bajo el contenido. Si no, usar el comportamiento
     // tradicional (página intersticial pequeña + redirección) para envíos no-AJAX.
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-    if ($isAjax || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+    error_log('[dashboard.php] isAjax=' . ($isAjax ? 'true' : 'false') . ', HTTP_X_REQUESTED_WITH=' . ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? 'NOT SET'));
+    
+    if ($isAjax) {
+        error_log('[dashboard.php] Returning JSON response for AJAX request');
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
+        error_log('[dashboard.php] JSON response sent, calling exit');
         exit;
     }
 
@@ -106,29 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo '<script>setTimeout(function(){window.location.href=' . json_encode($redirectUrl) . ';}, 1000);</script>';
     echo '</body></html>';
     exit;
-    } 
-    // Eliminar plantilla
-    elseif (isset($_POST['eliminar_plantilla'])) {
-        if (!validate_csrf()) {
-            http_response_code(400);
-            die('CSRF inválido');
-        }
-        $idPlantilla = $_POST['eliminar_plantilla'];
-        
-        $stmt = $conn->prepare("DELETE FROM plantillas WHERE id = ? AND username = ?");
-        $stmt->bind_param("is", $idPlantilla, $username);
-        $stmt->execute();
-        $stmt->close();
-
-    header("Location: " . BASE_URL . "/pags/micuenta.php?section=dashboard");
-        exit;
     }
 }
 
-?>
-
-<?php
-$
 // Detectar si este archivo está siendo incluido desde otro script (p.ej., micuenta.php).
 // Si se incluye, evitar imprimir el documento HTML completo (<html>, <head>, <body>) para prevenir documentos anidados.
 $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
@@ -144,6 +142,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     <title>Dashboard - Mi cuenta</title>
     <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
+    <meta name="base-url" content="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
     <style>
         .container {
@@ -299,7 +298,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     <div class="container">
         <div class="content">
             <h3>Crear Plantilla</h3>
-            <form method="post" id="form-crear-plantilla">
+            <form method="post" id="form-crear-plantilla" action="<?php echo BASE_URL; ?>/dashboard/crear_plantilla_handler.php">
                 <?php echo csrf_input(); ?>
                 <input type="text" name="nombre_plantilla" placeholder="Nombre de la plantilla" required>
                 <button type="submit" name="crear_plantilla" class="btn-crear-plantilla">Crear Nueva Plantilla</button>
@@ -440,7 +439,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             <em>No hay datos suficientes para mostrar gráficos.</em>
                         </div>
                         <?php endif; ?>
-                        <form method="post" data-plantilla-form="<?php echo $plantilla['id']; ?>" style="display: inline;">
+                        <form method="post" action="<?php echo BASE_URL; ?>/pags/micuenta.php?section=dashboard" data-plantilla-form="<?php echo $plantilla['id']; ?>" style="display: inline;">
                             <?php echo csrf_input(); ?>
                             <input type="hidden" name="eliminar_plantilla" value="<?php echo $plantilla['id']; ?>">
                             <button type="button" class="delete-btn" data-plantilla-id="<?php echo $plantilla['id']; ?>">Eliminar</button>
@@ -474,8 +473,12 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     (function(){
-    // Envío AJAX para crear plantilla: mostrar un banner inline bajo el contenido
-    // en lugar de navegar fuera o abrir una página intersticial separada.
+    // Envío AJAX para crear plantilla: 
+    // 1. Envía POST al handler de creación (crear_plantilla_handler.php)
+    // 2. Recarga la lista de plantillas desde obtener_plantillas.php
+    // 3. Verifica que la nueva plantilla está en la lista
+    // 4. Si está: éxito y redirige al editor
+    // 5. Si NO está: muestra error
     var form = document.getElementById('form-crear-plantilla');
     if (form) {
         form.addEventListener('submit', function(ev){
@@ -483,38 +486,76 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
             var submitBtn = form.querySelector('button[type=submit]');
             if (submitBtn) submitBtn.disabled = true;
             var fd = new FormData(form);
-            // ensure server sees the crear_plantilla key
-            if (!fd.has('crear_plantilla')) fd.append('crear_plantilla','1');
-
-            fetch(window.location.href, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            var nombrePlantilla = fd.get('nombre_plantilla');
+            
+            console.log('[AJAX] Iniciando creación de plantilla: ' + nombrePlantilla);
+            console.log('[AJAX] Enviando a: ' + form.action);
+            
+            // Paso 1: Enviar POST al handler de creación
+            fetch(form.action, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function(resp){
+                    console.log('[AJAX] Respuesta de creación: ' + resp.status);
                     if (!resp.ok) throw new Error('HTTP '+resp.status);
                     return resp.json();
                 })
                 .then(function(json){
-                    // use Notice to show success banner and redirect
-                    if (window.Notice && typeof window.Notice.show === 'function') {
-                        var link = json.redirect ? (' <a href="'+json.redirect+'">Ir ahora</a>') : '';
-                        window.Notice.show('success','<strong>Plantilla creada.</strong> Redirigiendo al editor...'+link, 3000);
-                    } else {
-                        // fallback to inline banner
-                        var banner = document.getElementById('create-banner');
-                        if (!banner) {
-                            banner = document.createElement('div');
-                            banner.id = 'create-banner';
-                            banner.style.margin = '12px 0';
-                            banner.style.padding = '12px';
-                            banner.style.borderRadius = '8px';
-                            banner.style.background = '#f8f9fa';
-                            banner.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                            form.parentNode.insertBefore(banner, form.nextSibling);
-                        }
-                        banner.innerHTML = '<strong>Plantilla creada.</strong> Redirigiendo al editor... <span style="margin-left:8px"><a id="create-banner-link" href="'+(json.redirect||'#')+'">Ir ahora</a></span>';
+                    console.log('[AJAX] JSON recibido:', json);
+                    
+                    if (!json.success) {
+                        throw new Error(json.error || 'Error desconocido');
                     }
-                    setTimeout(function(){ window.location.href = json.redirect || window.location.href; }, 900);
+                    
+                    // Paso 2: Recargar lista de plantillas
+                    console.log('[AJAX] Recargando lista de plantillas...');
+                    return fetch('/funciones/obtener_plantillas.php', { credentials: 'same-origin' })
+                        .then(function(resp){
+                            console.log('[AJAX] Respuesta de obtener_plantillas: ' + resp.status);
+                            if (!resp.ok) throw new Error('HTTP '+resp.status+' al cargar plantillas');
+                            return resp.json();
+                        })
+                        .then(function(plantillasData){
+                            console.log('[AJAX] Plantillas recibidas:', plantillasData);
+                            
+                            // Paso 3: Verificar que la nueva plantilla existe en la lista
+                            var encontrada = false;
+                            if (plantillasData.plantillas && Array.isArray(plantillasData.plantillas)) {
+                                encontrada = plantillasData.plantillas.some(function(p){
+                                    console.log('[AJAX] Comparando "' + p.nombre + '" con "' + nombrePlantilla + '"');
+                                    return p.nombre === nombrePlantilla;
+                                });
+                            }
+                            
+                            console.log('[AJAX] ¿Plantilla encontrada?: ' + encontrada);
+                            
+                            if (!encontrada) {
+                                throw new Error('Plantilla no encontrada en la lista después de crear');
+                            }
+                            
+                            // Paso 4: Éxito - mostrar banner y redirigir
+                            console.log('[AJAX] Éxito - mostrando banner y redirigiendo a: ' + json.redirect);
+                            if (window.Notice && typeof window.Notice.show === 'function') {
+                                var link = json.redirect ? (' <a href="'+json.redirect+'">Ir ahora</a>') : '';
+                                window.Notice.show('success','<strong>Plantilla creada.</strong> Redirigiendo al editor...'+link, 3000);
+                            } else {
+                                var banner = document.getElementById('create-banner');
+                                if (!banner) {
+                                    banner = document.createElement('div');
+                                    banner.id = 'create-banner';
+                                    banner.style.margin = '12px 0';
+                                    banner.style.padding = '12px';
+                                    banner.style.borderRadius = '8px';
+                                    banner.style.background = '#f8f9fa';
+                                    banner.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                                    form.parentNode.insertBefore(banner, form.nextSibling);
+                                }
+                                banner.innerHTML = '<strong>Plantilla creada.</strong> Redirigiendo al editor... <span style="margin-left:8px"><a id="create-banner-link" href="'+(json.redirect||'#')+'">Ir ahora</a></span>';
+                            }
+                            setTimeout(function(){ window.location.href = json.redirect || window.location.href; }, 900);
+                        });
                 })
                 .catch(function(err){
-                    console.error('Error creando plantilla:', err);
+                    console.error('[AJAX] Error:', err.message);
+                    console.error('[AJAX] Stack:', err.stack);
                     var banner = document.getElementById('create-banner');
                     if (!banner) { banner = document.createElement('div'); banner.id='create-banner'; form.parentNode.insertBefore(banner, form.nextSibling); }
                     banner.style.background = '#fff5f5'; banner.style.border = '1px solid #f5c6cb'; banner.style.color = '#721c24';

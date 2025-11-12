@@ -49,4 +49,3 @@ define('SESSION_NAME', env('SESSION_NAME', 'takemaster_sid'));
 define('CSRF_TOKEN_KEY', 'csrf_token');
 define('LOGIN_RATE_LIMIT_MAX', (int) env('LOGIN_RATE_LIMIT_MAX', '10')); // max attempts
 define('LOGIN_RATE_LIMIT_WINDOW_MIN', (int) env('LOGIN_RATE_LIMIT_WINDOW_MIN', '15')); // minutes
-?>

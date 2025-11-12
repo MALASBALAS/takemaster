@@ -10,6 +10,37 @@ if (!isset($_SESSION['username'])) {
 }
 
 $username = $_SESSION['username'];
+
+// Procesar eliminación de plantilla AQUÍ, antes de renderizar HTML
+// Esto asegura que la redirección funciona correctamente
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_plantilla'])) {
+    if (!validate_csrf()) {
+        http_response_code(400);
+        die('CSRF inválido');
+    }
+    
+    // Usar función de seguridad para eliminación con auditoría
+    require_once __DIR__ . '/../funciones/plantillas_security.php';
+    
+    $resultado = eliminar_plantilla_segura(
+        $conn,
+        (int)$_POST['eliminar_plantilla'],
+        $username,
+        get_client_ip()
+    );
+    
+    if (!$resultado['success']) {
+        error_log('[micuenta.php] Error eliminando plantilla: ' . $resultado['error']);
+        http_response_code(400);
+        die('Error: ' . $resultado['error']);
+    }
+    
+    error_log('[micuenta.php] Plantilla eliminada (soft delete) por usuario ' . $username);
+    
+    // Redirigir al dashboard después de eliminar
+    header("Location: " . BASE_URL . "/pags/micuenta.php?section=dashboard", true, 302);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -20,6 +51,7 @@ $username = $_SESSION['username'];
     <title>Mi cuenta</title>
     <link rel="shortcut icon" href="<?= BASE_URL ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
+    <meta name="base-url" content="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
     <style>
         /* Layout: fixed left sidebar and content to the right */
         :root { --account-sidebar-width: 220px; --topnav-height: 64px; }
@@ -174,140 +206,17 @@ $username = $_SESSION['username'];
                         include  __DIR__ . '/../dashboard/configuracion.php';
                         break;
             case 'dashboard':
-                // Si el archivo del dashboard está disponible, incluirlo; de lo contrario renderizar un fallback simple
-                            $dashboardFile = __DIR__ . '/../dashboard/dashboard.php';
-                            if (is_readable($dashboardFile)) {
-                                include $dashboardFile;
-                            } else {
-                                // Fallback: render a minimal dashboard block so the user sees content
-                                ?>
-                                <div class="content">
-                                    <h2>Bienvenido, <?php echo htmlspecialchars($username); ?></h2>
-
-                                    <meta charset="UTF-8">
-                                    <title>Dashboard - Mi cuenta</title>
-                                    <link rel="stylesheet" href="<?php echo rtrim(BASE_URL, '/'); ?>/src/css/styles.css">
-                                    <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
-                                    <style>
-                                        /* Minimal local styles copied from dashboard in case include is missing */
-                                        .container { display:block; width:100%; box-sizing:border-box; padding:8px 12px; }
-                                        .content { width:100%; max-width:calc(100% - var(--account-sidebar-width,0px) - 24px); padding:18px; box-sizing:border-box; margin:0 auto; background:transparent }
-                                        .plantillas-lista { list-style:none; padding:0; margin:0; display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:12px }
-                                        .plantillas-item { background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)); padding:12px; border-radius:8px }
-                                    </style>
-
-                                    <div class="container">
-                                    <div class="content">
-                                        <h3>Crear Plantilla</h3>
-                                        <form id="form-crear-plantilla" method="post" action="<?php echo BASE_URL; ?>/funciones/crear_plantilla.php">
-                                            <?php echo csrf_input(); ?>
-                                            <input type="text" name="nombre_plantilla" placeholder="Nombre de la plantilla" required>
-                                            <button type="submit" name="crear_plantilla" class="btn-crear-plantilla">Crear Nueva Plantilla</button>
-                                        </form>
-                                        <h3>Plantillas</h3>
-                                        <ul class="plantillas-lista">
-                                        <!-- no plantillas available fallback -->
-                                        </ul>
-
-                                        <!-- Popup para compartir (fallback) -->
-                                        <div id="popupCompartir" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
-                                            <h3>Compartir Plantilla</h3>
-                                            <?php for ($i = 1; $i <= 10; $i++): ?>
-                                                <input type="email" id="email<?php echo $i; ?>" placeholder="Email <?php echo $i; ?>" <?php echo $i===1? 'required':''; ?>>
-                                            <?php endfor; ?>
-                                            <button onclick="compartirPlantilla()">Compartir</button>
-                                            <button onclick="cerrarPopup()">Cerrar</button>
-                                        </div>
-                                    </div>
-                                    </div>
-                                </div>
-                                <script>
-                                // Manejar creación de plantilla con AJAX
-                                document.addEventListener('DOMContentLoaded', function(){
-                                    const form = document.getElementById('form-crear-plantilla');
-                                    if (form) {
-                                        form.addEventListener('submit', function(e){
-                                            e.preventDefault();
-                                            const submitBtn = form.querySelector('button[type="submit"]');
-                                            if (submitBtn) submitBtn.disabled = true;
-                                            
-                                            const formData = new FormData(form);
-                                            fetch(form.action, {
-                                                method: 'POST',
-                                                body: formData,
-                                                credentials: 'same-origin'
-                                            })
-                                            .then(resp => {
-                                                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                                                return resp.json();
-                                            })
-                                            .then(json => {
-                                                if (json.success) {
-                                                    if (window.Notice && typeof window.Notice.show === 'function') {
-                                                        window.Notice.show('success', 'Plantilla creada correctamente. Redirigiendo...', 2000);
-                                                    }
-                                                    setTimeout(function(){ window.location.href = json.redirect; }, 900);
-                                                } else {
-                                                    throw new Error(json.message || 'Error desconocido');
-                                                }
-                                            })
-                                            .catch(err => {
-                                                console.error('Error creando plantilla:', err);
-                                                if (window.Notice && typeof window.Notice.show === 'function') {
-                                                    window.Notice.show('error', 'Error al crear la plantilla: ' + err.message, 4000);
-                                                }
-                                                if (submitBtn) submitBtn.disabled = false;
-                                            });
-                                        });
-                                    }
-                                });
-                                
-                                function abrirPopup(plantillaId){ document.getElementById('popupCompartir').style.display='block'; window.currentPlantillaId=plantillaId; }
-                                function cerrarPopup(){ document.getElementById('popupCompartir').style.display='none'; }
-                                function compartirPlantilla(){
-                                    const emails=[]; for(let i=1;i<=10;i++){const e=document.getElementById('email'+i).value; if(e) emails.push(e);} 
-                                    const xhr=new XMLHttpRequest(); xhr.open('POST','<?php echo rtrim(BASE_URL, '/'); ?>/plantillas/compartir_plantilla.php', true); xhr.setRequestHeader('Content-Type','application/json;charset=UTF-8');
-                                    const meta=document.querySelector('meta[name="csrf-token"]'); if(meta) xhr.setRequestHeader('X-CSRF-Token', meta.getAttribute('content'));
-                                    xhr.onload=function(){ 
-                                        if(xhr.status===200){
-                                            // Prefer the global Notice component when available
-                                            if (window.Notice && typeof window.Notice.show === 'function') {
-                                                window.Notice.show('success','Plantilla compartida con éxito.', 3000);
-                                            } else {
-                                                // Fallback inline banner near the popup
-                                                let b = document.getElementById('share-inline-banner');
-                                                if (!b) { b = document.createElement('div'); b.id = 'share-inline-banner'; b.style.position = 'fixed'; b.style.top = '12%'; b.style.left = '50%'; b.style.transform = 'translateX(-50%)'; b.style.zIndex = 1200; b.style.padding = '10px 14px'; b.style.borderRadius = '8px'; b.style.background = '#e6ffed'; b.style.color = '#064e3b'; document.body.appendChild(b); }
-                                                b.textContent = 'Plantilla compartida con éxito.';
-                                                setTimeout(function(){ if (b && b.parentNode) b.parentNode.removeChild(b); }, 3000);
-                                            }
-                                            cerrarPopup();
-                                        } else {
-                                            if (window.Notice && typeof window.Notice.show === 'function') {
-                                                window.Notice.show('error','Error al compartir la plantilla.', 4000);
-                                            } else {
-                                                let b = document.getElementById('share-inline-banner');
-                                                if (!b) { b = document.createElement('div'); b.id = 'share-inline-banner'; b.style.position = 'fixed'; b.style.top = '12%'; b.style.left = '50%'; b.style.transform = 'translateX(-50%)'; b.style.zIndex = 1200; b.style.padding = '10px 14px'; b.style.borderRadius = '8px'; b.style.background = '#fff5f5'; b.style.color = '#721c24'; document.body.appendChild(b); }
-                                                b.textContent = 'Error al compartir la plantilla.';
-                                                setTimeout(function(){ if (b && b.parentNode) b.parentNode.removeChild(b); }, 4000);
-                                            }
-                                        }
-                                    }
-                                    xhr.onerror = function(){ 
-                                        if (window.Notice && typeof window.Notice.show === 'function') { 
-                                            window.Notice.show('error','Error de red al compartir la plantilla.',4000); 
-                                        } else { 
-                                            let b = document.getElementById('share-inline-banner');
-                                            if (!b) { b = document.createElement('div'); b.id = 'share-inline-banner'; b.style.position = 'fixed'; b.style.top = '12%'; b.style.left = '50%'; b.style.transform = 'translateX(-50%)'; b.style.zIndex = 1200; b.style.padding = '10px 14px'; b.style.borderRadius = '8px'; b.style.background = '#fff5f5'; b.style.color = '#721c24'; document.body.appendChild(b); }
-                                            b.textContent = 'Error de red al compartir la plantilla.';
-                                            setTimeout(function(){ if (b && b.parentNode) b.parentNode.removeChild(b); }, 4000);
-                                        }
-                                    };
-                                    xhr.send(JSON.stringify({ plantillaId: window.currentPlantillaId, emails }));
-                                }
-                                </script>
-                                <?php
-                            }
-                            break;
+                // IMPORTANTE: Los POSTs en dashboard deben procesarse ANTES de incluir el archivo
+                // para que el exit() funcione correctamente sin que micuenta.php continúe renderizando
+                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                    // Procesar POST de dashboard aquí, FUERA de la inclusión
+                    include __DIR__ . '/../dashboard/dashboard.php';
+                    // Si llegamos aquí, el POST fue procesado y se hizo exit en dashboard.php
+                } else {
+                    // GET: incluir normalmente para mostrar la página
+                    include __DIR__ . '/../dashboard/dashboard.php';
+                }
+                break;
                     default:
                         echo "<p>Seleccione una opción del menú.</p>";
                         break;

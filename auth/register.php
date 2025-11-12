@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
         <?php else : ?>
         <p>Ya has iniciado sesión. <a href="/auth/logout.php">Cerrar sesión</a></p>
-        <?php endif; ?>
+                <?php endif; ?>
     </div>
     <br>
     <?php include __DIR__ . '/../src/nav/footer.php'; ?>
