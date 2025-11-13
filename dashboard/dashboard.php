@@ -551,9 +551,9 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             <div style="flex:1 1 320px;max-width:320px;">
                                 <canvas id="chart-<?php echo $plantilla['id']; ?>" class="plantilla-chart cm-chart-widget" data-type="bar" data-ingresos="<?php echo htmlspecialchars((string)$ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$gastos, ENT_QUOTES); ?>" width="320" height="120" style="display:block;max-width:320px;width:100%;height:auto;" aria-label="Gráfico de ingresos y gastos"></canvas>
                                 <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:8px;">
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="both">Todos</button>
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="ingresos">Ingresos</button>
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="gastos">Gastos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="both">Todos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="ingresos">Ingresos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="gastos">Gastos</button>
                                 </div>
                             </div>
                         </div>
