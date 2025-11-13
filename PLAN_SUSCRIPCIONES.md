@@ -5,8 +5,8 @@
 Sistema de suscripción mensual de **3€** con opción de acceso **gratuito para organizaciones (ADOMA)**.
 
 - Usuarios normales: 3€/mes
-- Miembros de organizaciones: Gratis (el admin paga por todos)
-- Prueba gratuita: 7 o 14 días (opcional)
+- Miembros de organizaciones: Gratis o descuento
+- Prueba gratuita: 7 (opcional)
 
 ---
 

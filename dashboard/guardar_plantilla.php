@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../src/nav/bootstrap.php';
 require_once __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../funciones/validate_plantilla_access.php';
 start_secure_session();
 
 if (!isset($_SESSION['username'])) {
@@ -9,6 +10,19 @@ if (!isset($_SESSION['username'])) {
 }
 
 $username = $_SESSION['username'];
+
+// Get user's email from database (needed for shared plantilla permission checks)
+$userEmail = null;
+$stmt = $conn->prepare("SELECT email FROM users WHERE username = ?");
+if ($stmt) {
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $userEmail = $row['email'];
+    }
+    $stmt->close();
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!validate_csrf()) {
@@ -201,6 +215,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         if ($idPlantilla > 0) {
+            // 🔐 VALIDACIÓN ROBUSTA: Verifica acceso y rechaza explícitamente a 'lectores'
+            // Si no tiene permiso, esta función termina la ejecución con HTTP 403 + JSON error
+            require_plantilla_edit_access($conn, $idPlantilla, $username, $userEmail);
+            
             // Actualizar plantilla existente con auditoría y versiones
             $resultado = actualizar_plantilla_segura(
                 $conn,

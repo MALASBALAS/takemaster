@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../src/nav/bootstrap.php';
 require_once __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../funciones/encryption.php';
 start_secure_session();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -19,7 +20,7 @@ if ($id <= 0) {
     exit;
 }
 
-$stmt = $conn->prepare('SELECT contenido FROM plantillas WHERE id = ? AND username = ?');
+$stmt = $conn->prepare('SELECT contenido FROM plantillas WHERE id = ? AND username = ? AND deleted_at IS NULL');
 $stmt->bind_param('is', $id, $username);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -34,8 +35,16 @@ if (!$row) {
 
 $contenido = [];
 if (!empty($row['contenido'])) {
-    $decoded = json_decode($row['contenido'], true);
-    if (is_array($decoded)) $contenido = $decoded;
+    try {
+        // 🔐 DESENCRIPTAR contenido
+        $contenido_desencriptado = decrypt_content($row['contenido']);
+        $decoded = json_decode($contenido_desencriptado, true);
+        if (is_array($decoded)) $contenido = $decoded;
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error al desencriptar: ' . $e->getMessage()]);
+        exit;
+    }
 }
 
 echo json_encode(['success' => true, 'contenido' => $contenido]);

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../src/nav/bootstrap.php';
 require __DIR__ . '/../src/nav/db_connection.php';
+require __DIR__ . '/../funciones/encryption.php';
 start_secure_session();
 
 if (!isset($_SESSION['username'])) {
@@ -11,24 +12,103 @@ if (!isset($_SESSION['username'])) {
 $username = $_SESSION['username'];
 $idPlantilla = $_GET['id'];
 
-// Obtener la plantilla de la base de datos
-$stmt = $conn->prepare("SELECT * FROM plantillas WHERE id = ? AND username = ?");
+// Obtener email del usuario actual
+$userEmail = null;
+$stmt = $conn->prepare("SELECT email FROM users WHERE username = ?");
+if ($stmt) {
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $userEmail = $row['email'];
+    }
+    $stmt->close();
+}
+
+// Obtener la plantilla de la base de datos (propia o compartida)
+// Primero intentar obtener una plantilla propia
+$stmt = $conn->prepare("SELECT *, 1 as es_propia, 'propietario' as rol FROM plantillas WHERE id = ? AND username = ? AND deleted_at IS NULL");
 $stmt->bind_param("is", $idPlantilla, $username);
 $stmt->execute();
 $result = $stmt->get_result();
 $plantilla = $result->fetch_assoc();
 $stmt->close();
 
+// Si no es propia, intentar obtener una plantilla compartida conmigo (usando email correcto)
 if (!$plantilla) {
-    echo "Plantilla no encontrada.";
+    $stmt = $conn->prepare("
+        SELECT p.*, 0 as es_propia, COALESCE(pc.rol, 'lector') as rol 
+        FROM plantillas p
+        INNER JOIN plantillas_compartidas pc ON p.id = pc.id_plantilla
+        WHERE p.id = ? AND pc.email = ? AND p.deleted_at IS NULL
+    ");
+    if (!$stmt) {
+        // Fallback si la columna rol no existe aún
+        $stmt = $conn->prepare("
+            SELECT p.*, 0 as es_propia, 'lector' as rol 
+            FROM plantillas p
+            INNER JOIN plantillas_compartidas pc ON p.id = pc.id_plantilla
+            WHERE p.id = ? AND pc.email = ? AND p.deleted_at IS NULL
+        ");
+    }
+    $stmt->bind_param("is", $idPlantilla, $userEmail);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $plantilla = $result->fetch_assoc();
+    $stmt->close();
+}
+
+// Si aún no encontramos la plantilla, mostrar error de acceso
+if (!$plantilla) {
+    http_response_code(403);
+    echo '<!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Acceso Denegado</title>
+        <link rel="shortcut icon" href="' . BASE_URL . '/src/img/favicon.png" type="image/png">
+        <link rel="stylesheet" href="' . BASE_URL . '/src/css/styles.css">
+        <style>
+            body { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto; }
+            .error-box { text-align: center; padding: 40px; border-radius: 12px; background: #fff5f5; border: 1px solid #f5c6cb; max-width: 480px; }
+            .error-icon { font-size: 48px; margin-bottom: 16px; }
+            h1 { color: #721c24; margin: 0 0 12px; font-size: 24px; }
+            p { color: #666; margin: 8px 0; line-height: 1.6; }
+            .error-details { background: white; padding: 12px; border-radius: 8px; margin: 16px 0; font-size: 0.9rem; color: #999; font-family: monospace; }
+            a { display: inline-block; margin-top: 16px; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 6px; }
+            a:hover { background: #0056b3; }
+        </style>
+    </head>
+    <body>
+        <div class="error-box">
+            <div class="error-icon">🔐</div>
+            <h1>Acceso Denegado</h1>
+            <p>No tienes permiso para acceder a esta plantilla.</p>
+            <div class="error-details">
+                Plantilla ID: ' . htmlspecialchars($idPlantilla) . '<br>
+                Tu email: ' . htmlspecialchars($userEmail ?? 'No disponible') . '
+            </div>
+            <p style="font-size: 0.9rem; color: #999;">Si crees que debería tener acceso, contacta al propietario de la plantilla.</p>
+            <a href="' . BASE_URL . '/pags/micuenta.php?section=dashboard">Volver al Dashboard</a>
+        </div>
+    </body>
+    </html>';
     exit;
 }
 
 // Decode stored contenido JSON into arrays for rendering
 $contenido = [];
 if (!empty($plantilla['contenido'])) {
-    $decoded = json_decode($plantilla['contenido'], true);
-    if (is_array($decoded)) $contenido = $decoded;
+    try {
+        // 🔐 DESENCRIPTAR contenido
+        $contenido_desencriptado = decrypt_content($plantilla['contenido']);
+        $decoded = json_decode($contenido_desencriptado, true);
+        if (is_array($decoded)) $contenido = $decoded;
+    } catch (Exception $e) {
+        echo "Error al desencriptar plantilla: " . htmlspecialchars($e->getMessage());
+        exit;
+    }
 }
 $trabajoRows = $contenido['trabajo'] ?? [];
 $gastosVariablesRows = $contenido['gastos_variables'] ?? [];
@@ -86,9 +166,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/style-table.css">
     <!-- estilos movidos a: /src/css/style-table.css (se han añadido las reglas específicas de miplantilla) -->
+    <meta name="base-url" content="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="user-role" content="<?php echo htmlspecialchars($plantilla['rol'], ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="can-share" content="<?php echo $canShare ? 'true' : 'false'; ?>">
+    <meta name="can-delete-shares" content="<?php echo $canDeleteShares ? 'true' : 'false'; ?>">
+    <meta name="is-owner" content="<?php echo $plantilla['es_propia'] ? 'true' : 'false'; ?>">
 </head>
 <body>
 <?php include __DIR__ . '/../src/nav/topnav.php'; ?>
+
+<?php if ($isReadOnly): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Deshabilitar todos los inputs, selects, textareas y buttons cuando es modo lectura
+    const inputs = document.querySelectorAll('input:not([readonly]), select, textarea, button[type="button"][class*="add"], button[class*="eliminar"]');
+    inputs.forEach(el => {
+        if (el.getAttribute('readonly') !== 'readonly') {
+            el.disabled = true;
+            el.style.opacity = '0.6';
+            el.style.cursor = 'not-allowed';
+        }
+    });
+});
+</script>
+<?php endif; ?>
 
     <div class="container center">
         <h1><?php echo htmlspecialchars($plantilla['nombre']); ?></h1>
@@ -107,12 +209,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
     <form id="form-guardar-plantilla" method="post" action="<?php echo BASE_URL; ?>/dashboard/guardar_plantilla.php">
             <?php echo csrf_input(); ?>
 
-            <input type="hidden" name="id_plantilla" value="<?php echo $idPlantilla; ?>">
+            <?php 
+            $isReadOnly = !$plantilla['es_propia'] && $plantilla['rol'] === 'lector';
+            $canEdit = $plantilla['es_propia'] || in_array($plantilla['rol'], ['editor', 'admin']);
+            $canShare = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
+            $canDeleteShares = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
+            $roleLabel = $plantilla['es_propia'] ? 'Propietario' : ucfirst($plantilla['rol']);
+            $disabledAttr = $isReadOnly ? 'disabled' : '';
+            
+            // Colores y mensajes según rol
+            $roleColor = [
+                'propietario' => '#0c5460',    // azul oscuro
+                'admin' => '#28a745',          // verde
+                'editor' => '#004085',         // azul
+                'lector' => '#856404'          // naranja
+            ][$plantilla['es_propia'] ? 'propietario' : strtolower($plantilla['rol'])] ?? '#666';
+            $roleBg = [
+                'propietario' => '#d1ecf1',    // azul claro
+                'admin' => '#d4edda',          // verde claro
+                'editor' => '#cce5ff',         // azul claro
+                'lector' => '#fff3cd'          // amarillo claro
+            ][$plantilla['es_propia'] ? 'propietario' : strtolower($plantilla['rol'])] ?? '#f0f0f0';
+            ?>
+
+            <?php if ($plantilla['es_propia']): ?>
+                <!-- PROPIETARIO: Plantilla propia -->
+                <div style="margin:12px 0;padding:12px;border-radius:6px;background:<?php echo $roleBg; ?>;border:1px solid <?php echo $roleColor; ?>;color:<?php echo $roleColor; ?>;">
+                    <strong>✓ Plantilla Propia</strong><br>
+                    Esta es tu plantilla. Tienes acceso completo para editar, compartir y eliminar accesos.
+                </div>
+            <?php elseif ($isReadOnly): ?>
+                <!-- LECTOR: Solo lectura -->
+                <div style="margin:12px 0;padding:12px;border-radius:6px;background:<?php echo $roleBg; ?>;border:1px solid <?php echo $roleColor; ?>;color:<?php echo $roleColor; ?>;">
+                    <strong>👁️ Modo Solo Lectura</strong><br>
+                    <strong><?php echo htmlspecialchars($plantilla['username']); ?></strong> compartió esta plantilla contigo como <strong>Lector</strong>. 
+                    Puedes ver y revisar los datos, pero no puedes editar ni guardar cambios.
+                </div>
+            <?php elseif ($plantilla['rol'] === 'editor'): ?>
+                <!-- EDITOR: Puede editar -->
+                <div style="margin:12px 0;padding:12px;border-radius:6px;background:<?php echo $roleBg; ?>;border:1px solid <?php echo $roleColor; ?>;color:<?php echo $roleColor; ?>;">
+                    <strong>✎ Modo Edición</strong><br>
+                    <strong><?php echo htmlspecialchars($plantilla['username']); ?></strong> compartió esta plantilla contigo como <strong>Editor</strong>. 
+                    Puedes editar los datos y guardar cambios, pero no puedes compartir ni eliminar accesos.
+                </div>
+            <?php elseif ($plantilla['rol'] === 'admin'): ?>
+                <!-- ADMIN: Acceso completo -->
+                <div style="margin:12px 0;padding:12px;border-radius:6px;background:<?php echo $roleBg; ?>;border:1px solid <?php echo $roleColor; ?>;color:<?php echo $roleColor; ?>;">
+                    <strong>⚙️ Acceso Completo</strong><br>
+                    <strong><?php echo htmlspecialchars($plantilla['username']); ?></strong> compartió esta plantilla contigo como <strong>Admin</strong>. 
+                    Tienes acceso completo: puedes editar, compartir con otros, y eliminar accesos.
+                </div>
+            <?php endif; ?>
+
+            <input type="hidden" name="id_plantilla" value="<?php echo $idPlantilla; ?>" <?php echo $disabledAttr; ?>>
+            <!-- Token de seguridad: Rol del usuario para validación frontend y backend -->
+            <input type="hidden" name="user_role_token" value="<?php echo htmlspecialchars($plantilla['es_propia'] ? 'propietario' : $plantilla['rol']); ?>">
+            <input type="hidden" name="can_edit_token" value="<?php echo $canEdit ? '1' : '0'; ?>">
 
             <!-- Selección de Comunidad Autónoma (por defecto Madrid) -->
             <div style="margin:12px 0;">
                 <label for="comunidad_plantilla">Comunidad Autónoma</label><br>
-                <select name="comunidad_plantilla" id="comunidad_plantilla" style="width:100%; max-width:420px;">
+                <select name="comunidad_plantilla" id="comunidad_plantilla" style="width:100%; max-width:420px;" <?php echo $disabledAttr; ?>>
                     <?php
                     // Only keep communities that have price mappings (rates are defined client/server-side)
                     $comunidades = [
@@ -131,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
         <!-- Opciones de cálculo -->
         <div style="display:flex;align-items:center;gap:12px;margin-top:6px;justify-content:center;flex-direction:column;">
             <label style="margin:0;">Calcular en neto (-15%)
-                <input type="checkbox" id="usar_neto" name="usar_neto" <?php echo $usarNeto ? 'checked' : ''; ?>>
+                <input type="checkbox" id="usar_neto" name="usar_neto" <?php echo $usarNeto ? 'checked' : ''; ?> <?php echo $disabledAttr; ?>>
             </label>
             <span class="muted">Marca para aplicar -15% sobre el total calculado</span>
         </div>
@@ -158,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
                     <?php foreach ($trabajoRows as $r): ?>
                         <tr>
                             <td style="display:flex;gap:8px;align-items:center;">
-                                <input type="text" name="estudio[]" value="<?php echo htmlspecialchars($r['estudio'] ?? '', ENT_QUOTES); ?>" placeholder="Estudio de doblaje" style="flex:1;">
+                                <input type="text" name="estudio[]" value="<?php echo htmlspecialchars($r['estudio'] ?? '', ENT_QUOTES); ?>" placeholder="Estudio de doblaje" style="flex:1;" <?php echo $disabledAttr; ?>>
                                 <!-- (Removed per-row preset select: community selection now controls CG/Take) -->
                             </td>
                             <td>
@@ -181,7 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
                                 <input type="date" name="trabajo_fecha[]" value="<?php echo htmlspecialchars($r['fecha'] ?? '', ENT_QUOTES); ?>" style="width:100%; max-width:160px;">
                             </td>
                             <td><input type="number" name="cgs[]" value="<?php echo htmlspecialchars($r['cgs'] ?? '', ENT_QUOTES); ?>" placeholder="CGs" required min="0" step="1" pattern="\d+"></td>
-                            <td><input type="number" name="takes[]" value="<?php echo htmlspecialchars($r['takes'] ?? '', ENT_QUOTES); ?>" placeholder="Takes" required min="0" step="1" pattern="\d+"></td>
+                            <td><input type="number" name="takes[]" value="<?php echo htmlspecialchars($r['takes'] ?? '', ENT_QUOTES); ?>" placeholder="Takes" min="0" step="1"></td>
                             <td>
                                 <!-- Este campo será calculado automáticamente -->
                                 <input type="text" name="total[]" readonly>
@@ -215,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
                                 <input type="date" name="trabajo_fecha[]" value="" style="width:100%; max-width:160px;">
                             </td>
                             <td><input type="number" name="cgs[]" placeholder="CGs" required min="0" step="1" pattern="\d+"></td>
-                            <td><input type="number" name="takes[]" placeholder="Takes" required min="0" step="1" pattern="\d+"></td>
+                            <td><input type="number" name="takes[]" placeholder="Takes" min="0" step="1"></td>
                             <td>
                                 <!-- Este campo será calculado automáticamente -->
                                 <input type="text" name="total[]" readonly>
@@ -380,10 +537,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
 </div>
 
 
-        <!-- Botón de guardar -->
-            <div style="margin-top:18px; text-align:center;">
-                <button type="submit" name="guardar_plantilla" class="button-submit">Guardar plantilla</button>
-                <span id="save-status" class="save-status" aria-live="polite" style="display:inline-flex;align-items:center;">
+        <!-- Botón de guardar y compartir -->
+            <div style="margin-top:18px; text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center;">
+                <?php if ($canEdit): ?>
+                <button type="submit" name="guardar_plantilla" class="button-submit" style="padding:10px 20px;background:#0b69ff;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500;font-size:0.95rem;transition:background 0.2s;">
+                    💾 Guardar plantilla
+                </button>
+                <?php elseif ($isReadOnly): ?>
+                <button type="submit" name="guardar_plantilla" class="button-submit" style="padding:10px 20px;background:#ccc;color:#666;border:none;border-radius:6px;cursor:not-allowed;font-weight:500;font-size:0.95rem;" disabled>
+                    👁️ Solo lectura (No puedes editar)
+                </button>
+                <?php endif; ?>
+                
+                <?php if ($canShare): ?>
+                <button type="button" class="share-btn" data-plantilla-id="<?php echo $idPlantilla; ?>" style="padding:10px 20px;background:#28a745;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500;font-size:0.95rem;transition:background 0.2s;" title="Compartir plantilla con otros usuarios">
+                    📤 Compartir
+                </button>
+                <?php endif; ?>
+                
+                <span id="save-status" class="save-status" aria-live="polite" style="display:inline-flex;align-items:center;margin-left:12px;font-size:0.9rem;color:#666;">
                     <span class="status-text">Listo</span>
                 </span>
             </div>
@@ -392,12 +564,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
     <br>
     <?php include __DIR__ . '/../src/nav/footer.php'; ?>
 
+    <!-- Componentes modales -->
+    <?php include __DIR__ . '/../src/components/notice.php'; ?>
+    <?php include __DIR__ . '/../src/components/share-modal.php'; ?>
+    <?php include __DIR__ . '/../src/components/confirm-modal.php'; ?>
 
     <!-- Script JavaScript -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>/src/js/components/share-modal.js"></script>
+    <script src="<?php echo BASE_URL; ?>/src/js/components/confirm-modal.js"></script>
+    <script src="<?php echo BASE_URL; ?>/src/js/components/notice.js"></script>
     <script>
     (function(){
         const baseUrl = <?php echo json_encode(rtrim(BASE_URL, '/')); ?>;
+        const isReadOnly = <?php echo json_encode($isReadOnly); ?>;
+        const canEdit = <?php echo json_encode($canEdit); ?>;
+        
+        // Control de permisos de edición
+        // SOLO deshabilitar campos si es LECTOR (isReadOnly=true)
+        // Editor y Admin deben poder editar normalmente
+        if (isReadOnly) {
+            // LECTOR: Deshabilitar TODOS los campos
+            const form = document.getElementById('form-guardar-plantilla');
+            if (form) {
+                const elements = form.querySelectorAll('input, select, textarea, button[type="button"][id*="btn-agregar"], button[type="button"][id*="btn-delete"], button[class="btn-delete-row"]');
+                elements.forEach(function(el) {
+                    if (el.type === 'hidden') return; // No deshabilitar inputs ocultos
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    el.style.cursor = 'not-allowed';
+                });
+            }
+        }
+        
         const btn = document.getElementById('btn-reutilizar-gastos');
         const modal = document.getElementById('modal-reutilizar');
         const cancel = document.getElementById('btn-cancel-reuse');
@@ -938,6 +1137,31 @@ $(document).ready(function() {
     const form = document.querySelector('#form-guardar-plantilla') || document.querySelector('form[action$="/guardar_plantilla.php"]');
         if (!form) return;
 
+        // 🔐 CHECK IF PLANTILLA IS SHARED (READ-ONLY MODE) - ONLY for LECTOR role
+        const esPropia = <?php echo $plantilla['es_propia'] ? 'true' : 'false'; ?>;
+        const userRole = '<?php echo htmlspecialchars($plantilla['es_propia'] ? 'propietario' : $plantilla['rol'], ENT_QUOTES); ?>';
+        const isReadOnly = !esPropia && userRole === 'lector';
+        
+        if (isReadOnly) {
+            // LECTOR ONLY: Disable all input, select, textarea, and button elements in the form
+            const inputs = form.querySelectorAll('input:not([readonly]), select, textarea, button[type="submit"], button[type="button"]');
+            inputs.forEach(el => {
+                el.disabled = true;
+                el.style.opacity = '0.6';
+                el.style.cursor = 'not-allowed';
+            });
+            // Hide the save button and save status
+            const saveBtn = form.querySelector('button[name="guardar_plantilla"]');
+            if (saveBtn) saveBtn.style.display = 'none';
+            return; // Exit early - no autosave for LECTOR users
+        }
+        
+        // If EDITOR or ADMIN (shared or own), enable autosave
+        if (!esPropia && (userRole === 'editor' || userRole === 'admin')) {
+            // EDITOR/ADMIN: Allow editing and autosave - continue normally
+            // Nothing to disable here
+        }
+
         const saveStatusEl = document.getElementById('save-status');
         const statusText = saveStatusEl ? saveStatusEl.querySelector('.status-text') : null;
 
@@ -963,6 +1187,40 @@ $(document).ready(function() {
             setStatus('Guardando...', null);
 
             try {
+                // 🔐 VALIDACIÓN DE SEGURIDAD: Verificar rol ANTES de enviar
+                // Si alguien removió el 'disabled' del HTML manualmente, aún no puede guardar
+                const roleToken = form.querySelector('input[name="user_role_token"]');
+                const canEditToken = form.querySelector('input[name="can_edit_token"]');
+                
+                if (roleToken && roleToken.value === 'lector') {
+                    // 🚫 INTENTO MALICIOSO DETECTADO: Usuario LECTOR intentando guardar
+                    console.error('[SECURITY] Intento de guardar por LECTOR detectado. Rol:', roleToken.value);
+                    saving = false;
+                    setStatus('❌ Acceso denegado: No puedes guardar', 'error');
+                    
+                    // Notificar al servidor (logging)
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ 
+                            security_incident: true, 
+                            reason: 'lector_attempted_save',
+                            timestamp: new Date().toISOString()
+                        })
+                    }).catch(e => console.error('[LOG] Error reporting security incident:', e));
+                    
+                    return;
+                }
+                
+                if (canEditToken && canEditToken.value === '0') {
+                    // 🚫 ACCESO DENEGADO: Usuario no tiene permiso
+                    console.error('[SECURITY] Usuario sin permiso de edición intentando guardar');
+                    saving = false;
+                    setStatus('❌ No tienes permiso para guardar', 'error');
+                    return;
+                }
+
                 const fd = new FormData(form);
                 // remove submit button value if present
                 fd.delete('guardar_plantilla');

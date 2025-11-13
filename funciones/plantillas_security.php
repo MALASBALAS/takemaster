@@ -4,10 +4,14 @@
  * 
  * Funciones para gestión segura de plantillas con auditoría y control de versiones.
  * Incluye operaciones CRUD con validación de permisos, logging automático y recuperación de versiones.
+ * NUEVO: Encriptación AES-256-GCM del contenido
  * 
  * Uso:
  *   require_once __DIR__ . '/../funciones/plantillas_security.php';
  */
+
+// Cargar funciones de encriptación
+require_once __DIR__ . '/encryption.php';
 
 /**
  * Crear plantilla nueva con auditoría
@@ -28,6 +32,9 @@ function crear_plantilla_segura($conn, $username, $nombre, $contenido_inicial = 
         }
 
         $contenido_json = json_encode($contenido_inicial, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        
+        // 🔐 ENCRIPTAR contenido antes de guardar
+        $contenido_encriptado = encrypt_content($contenido_json);
 
         // Comenzar transacción
         $conn->begin_transaction();
@@ -35,25 +42,26 @@ function crear_plantilla_segura($conn, $username, $nombre, $contenido_inicial = 
         // Establecer IP para triggers
         $conn->query("SET @client_ip = '" . $conn->real_escape_string($client_ip) . "'");
 
-        // Insertar plantilla
+        // Insertar plantilla (con contenido encriptado)
         $stmt = $conn->prepare("
             INSERT INTO plantillas (username, nombre, contenido, version_actual)
             VALUES (?, ?, ?, 1)
         ");
-        $stmt->bind_param("sss", $username, $nombre, $contenido_json);
+        $stmt->bind_param("sss", $username, $nombre, $contenido_encriptado);
         $stmt->execute();
         $plantilla_id = $stmt->insert_id;
         $stmt->close();
 
-        // Crear versión 1
+        // Crear versión 1 (también encriptada)
         $hash = hash('sha256', $contenido_json);
         $stmt = $conn->prepare("
             INSERT INTO plantillas_versiones (
                 plantilla_id, version_numero, contenido, tamaño_bytes, 
                 hash_contenido, guardado_por, guardado_desde
-            ) VALUES (?, 1, ?, ?, UNHEX(?), ?, ?)
+            ) VALUES (?, 1, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("isisss", $plantilla_id, $contenido_json, strlen($contenido_json), $hash, $username, $client_ip);
+        $tamaño = strlen($contenido_json);
+        $stmt->bind_param("issiiss", $plantilla_id, $contenido_encriptado, $tamaño, $hash, $username, $client_ip);
         $stmt->execute();
         $stmt->close();
 
@@ -61,7 +69,8 @@ function crear_plantilla_segura($conn, $username, $nombre, $contenido_inicial = 
         $detalles = json_encode([
             'nombre' => $nombre,
             'tamaño_inicial' => strlen($contenido_json),
-            'versión' => 1
+            'versión' => 1,
+            'encriptada' => true
         ]);
         $stmt = $conn->prepare("
             INSERT INTO plantillas_auditoria (
@@ -74,12 +83,12 @@ function crear_plantilla_segura($conn, $username, $nombre, $contenido_inicial = 
 
         $conn->commit();
 
-        error_log("[plantillas_security] Plantilla {$plantilla_id} creada por {$username}");
+        error_log("[plantillas_security] Plantilla {$plantilla_id} creada (encriptada) por {$username}");
 
         return [
             'success' => true,
             'plantilla_id' => $plantilla_id,
-            'message' => 'Plantilla creada exitosamente'
+            'message' => 'Plantilla creada exitosamente (encriptada)'
         ];
 
     } catch (Exception $e) {
@@ -123,25 +132,79 @@ function actualizar_plantilla_segura($conn, $plantilla_id, $username, $contenido
             }
         }
 
+        // 🔐 ENCRIPTAR contenido antes de guardar
+        $contenido_encriptado = encrypt_content($contenido_json);
+
         // Comenzar transacción
         $conn->begin_transaction();
 
-        // Verificar permisos y obtener versión actual
+        // 🔐 VERIFICAR PERMISOS: Puede ser propietario o tener rol editor/admin en compartidas
+        // Primero: ¿Es propietario?
         $stmt = $conn->prepare("
-            SELECT version_actual, contenido FROM plantillas
+            SELECT id, username, version_actual, contenido FROM plantillas
             WHERE id = ? AND username = ? AND deleted_at IS NULL
             LIMIT 1
         ");
         $stmt->bind_param("is", $plantilla_id, $username);
         $stmt->execute();
         $result = $stmt->get_result();
+        $is_owner = ($result->num_rows > 0);
+        $stmt->close();
+        
+        if (!$is_owner) {
+            // No es propietario, verificar si tiene rol en compartidas
+            // Obtener email del usuario
+            $stmt = $conn->prepare("SELECT email FROM users WHERE username = ? LIMIT 1");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $user_result = $stmt->get_result();
+            if ($user_result->num_rows === 0) {
+                throw new Exception("Plantilla no encontrada o sin permisos");
+            }
+            $user_row = $user_result->fetch_assoc();
+            $userEmail = $user_row['email'];
+            $stmt->close();
+            
+            // Verificar rol en plantillas_compartidas (solo editor y admin pueden editar)
+            $stmt = $conn->prepare("
+                SELECT rol FROM plantillas_compartidas
+                WHERE id_plantilla = ? AND email = ? AND rol IN ('editor', 'admin')
+                LIMIT 1
+            ");
+            $stmt->bind_param("is", $plantilla_id, $userEmail);
+            $stmt->execute();
+            $share_result = $stmt->get_result();
+            if ($share_result->num_rows === 0) {
+                throw new Exception("Plantilla no encontrada o sin permisos");
+            }
+            $stmt->close();
+        }
+        
+        // Obtener versión actual e id de plantilla (sea propietario o compartida)
+        $stmt = $conn->prepare("
+            SELECT version_actual, contenido FROM plantillas
+            WHERE id = ? AND deleted_at IS NULL
+            LIMIT 1
+        ");
+        $stmt->bind_param("i", $plantilla_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result->num_rows === 0) {
-            throw new Exception("Plantilla no encontrada o sin permisos");
+            throw new Exception("Plantilla no encontrada");
         }
         $row = $result->fetch_assoc();
         $version_actual = $row['version_actual'];
-        $contenido_anterior = $row['contenido'];
+        $contenido_anterior_encriptado = $row['contenido'];
         $stmt->close();
+        
+        // 🔐 DESENCRIPTAR para comparar
+        try {
+            $contenido_anterior = decrypt_content($contenido_anterior_encriptado);
+        } catch (Exception $e) {
+            // Si falla desencriptación, tratar como diferente (forzar actualización)
+            error_log("[plantillas_security] Advertencia: No se pudo desencriptar contenido anterior de plantilla {$plantilla_id}");
+            $contenido_anterior = null;
+        }
 
         // Si el contenido no cambió, retornar la misma versión
         if ($contenido_anterior === $contenido_json) {
@@ -165,19 +228,20 @@ function actualizar_plantilla_segura($conn, $plantilla_id, $username, $contenido
             SET contenido = ?, version_actual = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->bind_param("sii", $contenido_json, $version_nueva, $plantilla_id);
+        $stmt->bind_param("sii", $contenido_encriptado, $version_nueva, $plantilla_id);
         $stmt->execute();
         $stmt->close();
 
         // Crear entrada en versiones
         $hash = hash('sha256', $contenido_json);
+        $tamaño = strlen($contenido_json);
         $stmt = $conn->prepare("
             INSERT INTO plantillas_versiones (
                 plantilla_id, version_numero, contenido, tamaño_bytes, 
                 hash_contenido, cambio_descripcion, guardado_por, guardado_desde
-            ) VALUES (?, ?, ?, ?, UNHEX(?), ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("iisisss", $plantilla_id, $version_nueva, $contenido_json, strlen($contenido_json), $hash, $cambio_descripcion, $username, $client_ip);
+        $stmt->bind_param("iissiiss", $plantilla_id, $version_nueva, $contenido_encriptado, $tamaño, $hash, $cambio_descripcion, $username, $client_ip);
         $stmt->execute();
         $stmt->close();
 
@@ -495,6 +559,53 @@ function get_client_ip()
         return $_SERVER['HTTP_FORWARDED'];
     } else {
         return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+}
+
+/**
+ * Obtener plantilla desencriptada por ID
+ * 
+ * @param mysqli $conn Conexión a BD
+ * @param int $plantilla_id ID de la plantilla
+ * @param string $username Usuario (para verificar permisos)
+ * 
+ * @return array ['success' => bool, 'plantilla' => array, 'error' => string]
+ */
+function obtener_plantilla_desencriptada($conn, $plantilla_id, $username)
+{
+    try {
+        $stmt = $conn->prepare("
+            SELECT id, nombre, contenido, version_actual, created_at, updated_at
+            FROM plantillas
+            WHERE id = ? AND username = ? AND deleted_at IS NULL
+            LIMIT 1
+        ");
+        $stmt->bind_param("is", $plantilla_id, $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            return ['success' => false, 'error' => 'Plantilla no encontrada'];
+        }
+        
+        $plantilla = $result->fetch_assoc();
+        $stmt->close();
+        
+        // 🔐 DESENCRIPTAR contenido
+        $contenido_desencriptado = decrypt_content($plantilla['contenido']);
+        $plantilla['contenido'] = json_decode($contenido_desencriptado, true);
+        
+        return [
+            'success' => true,
+            'plantilla' => $plantilla
+        ];
+        
+    } catch (Exception $e) {
+        error_log("[plantillas_security] Error al obtener plantilla: " . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => 'Error al obtener plantilla: ' . $e->getMessage()
+        ];
     }
 }
 
