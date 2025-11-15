@@ -6,19 +6,20 @@ Aplicación web en PHP para gestión y visualización de información, con front
 
 ## Estado actual del proyecto
 
-**ESTADO: FASE DE TESTING CON USUARIOS REALES**
+**ESTADO: BETA STABLE - Sistema de compartir con seguridad reforzada**
 
 - **Desarrollo completado:** Todas las funcionalidades principales implementadas y validadas
 - **Documentación finalizada:** Entrega RA1 y RA4 documentadas completamente
-- **Testing en curso:** Recopilación de feedback de usuarios reales
-- **Mejoras pendientes:** Análisis de feedback para optimizaciones
+- **Sistema de compartir:** Roles basados en permisos (lector, editor, admin, propietario) con 4 capas de seguridad
+- **Testing activo:** Sistema en uso con usuarios reales, feedback siendo procesado
+- **Mejoras recientes:** Fixes críticos en seguridad y permisos, validación backend reforzada
 
-**Próximos pasos:**
-1. Pruebas extensivas con usuarios reales (actores, direcrtores)
-2. Recopilación de feedback sobre usabilidad y funcionalidades
-3. Implementación de mejoras basadas en feedback
-4. Optimizaciones de rendimiento si es necesario
-5. Seguridad y escalabilidad final
+**Funcionalidades actuales:**
+1. ✅ Plantillas con edición colaborativa (share con roles)
+2. ✅ Seguridad contra manipulación via DevTools (4 capas)
+3. ✅ Control granular de permisos (lector→editor→admin→propietario)
+4. ✅ Campos de formulario configurables (CGs requerido, Takes opcional)
+5. ✅ Dashboard con visualización de propias y compartidas
 
 
 ## Características principales
@@ -28,6 +29,11 @@ Aplicación web en PHP para gestión y visualización de información, con front
 - Consultas preparadas (mysqli) y UTF-8 (utf8mb4)
 - Panel de control (dashboard) y páginas públicas en `pags/`
 - Estructura modular con funciones en `funciones/` y utilidades en `src/nav/`
+- **Sistema de Compartir con Roles (Share Function):**
+  - Roles: lector (solo lectura), editor (editar), admin (editar+compartir), propietario (total)
+  - Validación de permisos en backend con verificación de tabla `plantillas_compartidas`
+  - 4 capas de seguridad contra manipulación: HTML disabled + JS DOM + tokens validados + backend authority
+  - Almacenamiento encriptado de plantillas en base de datos
 - **Responsive Design:** interfaz optimizada para móvil, tablet y escritorio
   - Meta viewport en todas las páginas para escalado correcto
   - Breakpoints: 480px (móvil), 768px (tablet), 1024px+ (desktop)
@@ -133,11 +139,13 @@ Para información completa sobre la entrega del proyecto, consultar:
 **Fecha de Entrega:** 9 de noviembre de 2025  
 
 ## Estado de funcionalidades
-- **Responsive Design:** Completado (todos los breakpoints y menú móvil funcional)
-- **Diálogo de Cookies:** Completado (con persistencia en localStorage)
-- **Navbar:** Funcional (menú hamburguesa en móviles, enlaces centrados, color consistente)
-- Plantillas (`plantillas/`): en desarrollo (WIP)
-- Resto de páginas: listo para evaluación/uso
+- **Responsive Design:** ✅ Completado (todos los breakpoints y menú móvil funcional)
+- **Diálogo de Cookies:** ✅ Completado (con persistencia en localStorage)
+- **Navbar:** ✅ Funcional (menú hamburguesa en móviles, enlaces centrados, color consistente)
+- **Plantillas (`plantillas/`):** ✅ Completado (crear, editar, compartir con roles, validación de permisos)
+- **Sistema de Compartir:** ✅ Completado (lector/editor/admin/propietario con 4 capas seguridad)
+- **Dashboard:** ✅ Completado (muestra plantillas propias y compartidas con visualización de roles)
+- Resto de páginas: ✅ listo para evaluación/uso
 
 ## Responsive Design
 Todas las páginas incluyen `<meta name="viewport" content="width=device-width, initial-scale=1">` para escalado correcto en móviles.

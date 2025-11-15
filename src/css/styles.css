@@ -1468,3 +1468,15 @@ section img {
     font-size: 1.3rem;
   }
 }
+
+/* Iconos inline SVG - heredan color del texto */
+.icon-inline {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-right: 0.25em;
+  fill: currentColor;
+  stroke: currentColor;
+  color: inherit;
+}

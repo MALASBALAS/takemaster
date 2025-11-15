@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../src/nav/bootstrap.php';
 require_once __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../funciones/validate_plantilla_access.php';
 start_secure_session();
 
 if (!isset($_SESSION['username'])) {
@@ -9,6 +10,19 @@ if (!isset($_SESSION['username'])) {
 }
 
 $username = $_SESSION['username'];
+
+// Get user's email from database (needed for shared plantilla permission checks)
+$userEmail = null;
+$stmt = $conn->prepare("SELECT email FROM users WHERE username = ?");
+if ($stmt) {
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $userEmail = $row['email'];
+    }
+    $stmt->close();
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!validate_csrf()) {
@@ -196,31 +210,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         error_log('[DEBUG] guardar_plantilla payload length=' . strlen($contenido_json) . ' payload=' . $contenido_json);
     }
 
-    // Use transaction for safe write
-    $conn->begin_transaction();
+    // Usar función de seguridad con auditoría y versionado automático
+    require_once __DIR__ . '/../funciones/plantillas_security.php';
+
     try {
         if ($idPlantilla > 0) {
-            $stmt = $conn->prepare("UPDATE plantillas SET contenido = ?, updated_at = NOW() WHERE id = ? AND username = ?");
-            if (!$stmt) throw new Exception('Error al preparar la consulta de actualización.');
-            $stmt->bind_param('sis', $contenido_json, $idPlantilla, $username);
-            $stmt->execute();
-            if ($stmt->affected_rows === 0) {
-                // Could be mismatch of username/id
-                // We'll still commit but warn
+            // 🔐 VALIDACIÓN ROBUSTA: Verifica acceso y rechaza explícitamente a 'lectores'
+            // Si no tiene permiso, esta función termina la ejecución con HTTP 403 + JSON error
+            require_plantilla_edit_access($conn, $idPlantilla, $username, $userEmail);
+            
+            // Actualizar plantilla existente con auditoría y versiones
+            $resultado = actualizar_plantilla_segura(
+                $conn,
+                $idPlantilla,
+                $username,
+                $contenido_json,
+                'Cambios guardados desde editor',
+                get_client_ip()
+            );
+            
+            if (!$resultado['success']) {
+                http_response_code(500);
+                die(json_encode(['success' => false, 'error' => $resultado['error']]));
             }
-            $stmt->close();
         } else {
+            // Crear plantilla nueva con auditoría
             $nombre = trim((string)($_POST['nombre'] ?? ('Plantilla ' . date('YmdHis'))));
-            $stmt = $conn->prepare("INSERT INTO plantillas (username, nombre, contenido, updated_at) VALUES (?, ?, ?, NOW())");
-            if (!$stmt) throw new Exception('Error al preparar la inserción.');
-            $stmt->bind_param('sss', $username, $nombre, $contenido_json);
-            $stmt->execute();
-            $idPlantilla = $stmt->insert_id;
-            $stmt->close();
+            $resultado = crear_plantilla_segura(
+                $conn,
+                $username,
+                $nombre,
+                $payload,
+                get_client_ip()
+            );
+            
+            if (!$resultado['success']) {
+                http_response_code(500);
+                die(json_encode(['success' => false, 'error' => $resultado['error']]));
+            }
+            
+            $idPlantilla = $resultado['plantilla_id'];
         }
-        $conn->commit();
     } catch (Exception $e) {
-        $conn->rollback();
         http_response_code(500);
         if (defined('APP_ENV') && APP_ENV !== 'production') {
             die('Error al guardar plantilla: ' . $e->getMessage());
@@ -247,4 +278,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     header("Location: " . BASE_URL . "/pags/micuenta.php?section=dashboard&open_id=" . urlencode((string)$idPlantilla));
     exit;
 }
-?>

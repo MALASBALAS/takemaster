@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../src/nav/bootstrap.php';
 require_once __DIR__ . '/../src/nav/db_connection.php';
+require_once __DIR__ . '/../funciones/encryption.php';
 start_secure_session();
 
 // --- Captura robusta de errores: recoger advertencias/excepciones de PHP y emitirlas en la consola del navegador
@@ -45,21 +46,48 @@ if (!isset($_SESSION['username'])) {
 
 $username = $_SESSION['username'];
 
+// Obtener email del usuario actual para consultas de compartidas
+$userEmail = null;
+$stmt = $conn->prepare("SELECT email FROM users WHERE username = ?");
+if ($stmt) {
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $userEmail = $row['email'];
+    }
+    $stmt->close();
+}
+
 // Manejo de la creación y eliminación de plantillas
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log('[dashboard.php] POST request detected');
+    
     // Crear plantilla
     if (isset($_POST['crear_plantilla'])) {
+        error_log('[dashboard.php] crear_plantilla POST parameter found');
         if (!validate_csrf()) {
             http_response_code(400);
             die('CSRF inválido');
         }
-        $nombrePlantilla = $_POST['nombre_plantilla'];
         
-        $stmt = $conn->prepare("INSERT INTO plantillas (username, nombre) VALUES (?, ?)");
-        $stmt->bind_param("ss", $username, $nombrePlantilla);
-        $stmt->execute();
-        $plantillaId = $stmt->insert_id;
-        $stmt->close();
+        // Usar función de seguridad para crear plantilla con auditoría
+        require_once __DIR__ . '/../funciones/plantillas_security.php';
+        
+        $resultado = crear_plantilla_segura(
+            $conn,
+            $username,
+            $_POST['nombre_plantilla'],
+            [],
+            get_client_ip()
+        );
+        
+        if (!$resultado['success']) {
+            http_response_code(500);
+            die(json_encode(['success' => false, 'error' => $resultado['error']]));
+        }
+        
+        $plantillaId = $resultado['plantilla_id'];
 
     // Redirigir al editor de la plantilla recién creada tras una pequeña espera (1 segundo) para permitir feedback en la interfaz
     $redirectUrl = BASE_URL . '/plantillas/miplantilla.php?id=' . urlencode((string)$plantillaId);
@@ -68,9 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // renderice un banner inline bajo el contenido. Si no, usar el comportamiento
     // tradicional (página intersticial pequeña + redirección) para envíos no-AJAX.
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-    if ($isAjax || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+    error_log('[dashboard.php] isAjax=' . ($isAjax ? 'true' : 'false') . ', HTTP_X_REQUESTED_WITH=' . ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? 'NOT SET'));
+    
+    if ($isAjax) {
+        error_log('[dashboard.php] Returning JSON response for AJAX request');
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
+        error_log('[dashboard.php] JSON response sent, calling exit');
         exit;
     }
 
@@ -106,29 +138,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo '<script>setTimeout(function(){window.location.href=' . json_encode($redirectUrl) . ';}, 1000);</script>';
     echo '</body></html>';
     exit;
-    } 
-    // Eliminar plantilla
-    elseif (isset($_POST['eliminar_plantilla'])) {
-        if (!validate_csrf()) {
-            http_response_code(400);
-            die('CSRF inválido');
-        }
-        $idPlantilla = $_POST['eliminar_plantilla'];
-        
-        $stmt = $conn->prepare("DELETE FROM plantillas WHERE id = ? AND username = ?");
-        $stmt->bind_param("is", $idPlantilla, $username);
-        $stmt->execute();
-        $stmt->close();
-
-    header("Location: " . BASE_URL . "/pags/micuenta.php?section=dashboard");
-        exit;
     }
 }
 
-?>
-
-<?php
-$
 // Detectar si este archivo está siendo incluido desde otro script (p.ej., micuenta.php).
 // Si se incluye, evitar imprimir el documento HTML completo (<html>, <head>, <body>) para prevenir documentos anidados.
 $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
@@ -144,6 +156,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     <title>Dashboard - Mi cuenta</title>
     <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/src/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/src/css/styles.css">
+    <meta name="base-url" content="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="csrf-token" content="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
     <style>
         .container {
@@ -205,6 +218,14 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
 
         .plantillas-item:hover{
             color:#aaa;
+        }
+        /* Styling for filtered state */
+        .plantillas-item.hidden {
+            display: none;
+        }
+        .plantillas-item.highlighted {
+            background: linear-gradient(180deg, rgba(11, 105, 255, 0.05), rgba(0, 0, 0, 0.02)) !important;
+            border: 1px solid rgba(11, 105, 255, 0.2);
         }
         /* Only style specific buttons here to avoid affecting all buttons globally */
         .btn-crear-plantilla {
@@ -299,32 +320,79 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     <div class="container">
         <div class="content">
             <h3>Crear Plantilla</h3>
-            <form method="post" id="form-crear-plantilla">
+            <form method="post" id="form-crear-plantilla" action="<?php echo BASE_URL; ?>/dashboard/crear_plantilla_handler.php">
                 <?php echo csrf_input(); ?>
                 <input type="text" name="nombre_plantilla" placeholder="Nombre de la plantilla" required>
                 <button type="submit" name="crear_plantilla" class="btn-crear-plantilla">Crear Nueva Plantilla</button>
             </form>
-            <h3>Plantillas</h3>
+
+            <!-- Buscador y Ordenar -->
+            <div style="margin:20px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;">
+                <div style="flex:1 1 250px;min-width:200px;">
+                    <input type="text" id="search-plantillas" placeholder="Buscar plantilla..." style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.95rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22%3E%3Ccircle cx=%2211%22 cy=%2711%22 r=%228%22/%3E%3Cline x1=%2721%22 y1=%2721%22 x2=%2216.65%22 y2=%2716.65%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center;background-size:20px;padding-right:32px;">
+                </div>
+                <div style="flex:0 1 auto;">
+                    <label for="sort-plantillas" style="margin-right:8px;font-weight:500;">Ordenar por:</label>
+                    <select id="sort-plantillas" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.95rem;cursor:pointer;">
+                        <option value="reciente">Más reciente</option>
+                        <option value="antiguo">Más antiguo</option>
+                        <option value="nombre-asc">Nombre (A-Z)</option>
+                        <option value="nombre-desc">Nombre (Z-A)</option>
+                        <option value="ingresos-desc">Mayor ingreso</option>
+                        <option value="ingresos-asc">Menor ingreso</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Separate arrays for own and shared plantillas -->
             <?php
+            $mis_plantillas = [];
+            $plantillas_compartidas_conmigo = [];
             // Asegurarse de que $plantillas está definida cuando este archivo se incluye desde otro sitio
             // (p.ej., micuenta.php). Si el llamador no la proporciona, cargarla desde la base de datos.
             if (!isset($plantillas)) {
                 $plantillas = [];
                 try {
                     if (isset($conn) && $conn instanceof mysqli) {
-                        $stmt = $conn->prepare("SELECT id, nombre, contenido FROM plantillas WHERE username = ? ORDER BY id DESC");
+                        // 1. Plantillas propias
+                        $stmt = $conn->prepare("SELECT id, nombre, contenido, username FROM plantillas WHERE username = ? AND deleted_at IS NULL ORDER BY id DESC");
                         if ($stmt) {
                             $stmt->bind_param('s', $username);
                             $stmt->execute();
                             $result = $stmt->get_result();
                             if ($result) {
                                 while ($row = $result->fetch_assoc()) {
+                                    $row['es_propia'] = true;
                                     $plantillas[] = $row;
                                 }
                             }
                             $stmt->close();
                         } else {
-                            $GLOBALS['__php_errors'][] = ['type' => 'db', 'message' => 'Failed to prepare statement for fetching plantillas', 'file' => __FILE__, 'line' => __LINE__];
+                            $GLOBALS['__php_errors'][] = ['type' => 'db', 'message' => 'Failed to prepare statement for fetching plantillas propias', 'file' => __FILE__, 'line' => __LINE__];
+                        }
+
+                        // 2. Plantillas compartidas conmigo
+                        $stmt = $conn->prepare("
+                            SELECT DISTINCT p.id, p.nombre, p.contenido, p.username, COALESCE(pc.rol, 'lector') as rol
+                            FROM plantillas p
+                            INNER JOIN plantillas_compartidas pc ON p.id = pc.id_plantilla
+                            WHERE pc.email = ? 
+                            AND p.deleted_at IS NULL 
+                            ORDER BY p.id DESC
+                        ");
+                        if ($stmt) {
+                            $stmt->bind_param('s', $userEmail);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
+                            if ($result) {
+                                while ($row = $result->fetch_assoc()) {
+                                    $row['es_propia'] = false;
+                                    $row['compartida_por'] = $row['username'];
+                                    $plantillas[] = $row;
+                                }
+                            }
+                            $stmt->close();
+                        } else {
+                            $GLOBALS['__php_errors'][] = ['type' => 'db', 'message' => 'Failed to prepare statement for fetching plantillas compartidas', 'file' => __FILE__, 'line' => __LINE__];
                         }
                     } else {
                         $GLOBALS['__php_errors'][] = ['type' => 'db', 'message' => 'Database connection ($conn) not available or not mysqli', 'file' => __FILE__, 'line' => __LINE__];
@@ -333,53 +401,100 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                     $GLOBALS['__php_errors'][] = ['type' => 'exception', 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()];
                 }
             }
+            
+            // Separate plantillas into own and shared
+            foreach ($plantillas as $p) {
+                if ($p['es_propia']) {
+                    $mis_plantillas[] = $p;
+                } else {
+                    $plantillas_compartidas_conmigo[] = $p;
+                }
+            }
             ?>
             <?php
             // Aggregate totals across all plantillas so we can show a single global donut chart.
             $total_ingresos = 0.0;
             $total_gastos = 0.0;
-            foreach ($plantillas as $p) {
+            $compartidos_ingresos = 0.0;
+            $compartidos_gastos = 0.0;
+            
+            $todos_los_plantillas = array_merge($mis_plantillas, $plantillas_compartidas_conmigo);
+            foreach ($todos_los_plantillas as $p) {
                 if (!empty($p['contenido'])) {
-                    $d = json_decode($p['contenido'], true);
+                    try {
+                        // 🔐 DESENCRIPTAR contenido
+                        $contenido_desencriptado = decrypt_content($p['contenido']);
+                        $d = json_decode($contenido_desencriptado, true);
+                    } catch (Exception $e) {
+                        // Si falla la desencriptación, intentar JSON directo (compatibilidad hacia atrás)
+                        $d = json_decode($p['contenido'], true);
+                    }
                     if (is_array($d)) {
+                        $ing = 0.0;
+                        $gast = 0.0;
+                        
                         if (!empty($d['trabajo']) && is_array($d['trabajo'])) {
                             foreach ($d['trabajo'] as $t) {
                                 if (isset($t['total']) && $t['total'] !== '') {
-                                    $total_ingresos += floatval($t['total']);
+                                    $ing += floatval($t['total']);
                                 } elseif (isset($t['aplicado_cg']) || isset($t['aplicado_take'])) {
-                                    $total_ingresos += floatval($t['aplicado_cg'] ?? 0) + floatval($t['aplicado_take'] ?? 0);
+                                    $ing += floatval($t['aplicado_cg'] ?? 0) + floatval($t['aplicado_take'] ?? 0);
                                 }
                             }
                         }
                         if (!empty($d['gastos_variables']) && is_array($d['gastos_variables'])) {
                             foreach ($d['gastos_variables'] as $gv) {
-                                $total_gastos += floatval($gv['monto'] ?? 0);
+                                $gast += floatval($gv['monto'] ?? 0);
                             }
                         }
                         if (!empty($d['gastos_fijos']) && is_array($d['gastos_fijos'])) {
                             foreach ($d['gastos_fijos'] as $gf) {
-                                $total_gastos += floatval($gf['monto'] ?? 0);
+                                $gast += floatval($gf['monto'] ?? 0);
                             }
+                        }
+                        
+                        // Separar propios de compartidos
+                        if ($p['es_propia']) {
+                            $total_ingresos += $ing;
+                            $total_gastos += $gast;
+                        } else {
+                            $compartidos_ingresos += $ing;
+                            $compartidos_gastos += $gast;
                         }
                     }
                 }
             }
             $total_beneficio = $total_ingresos - $total_gastos;
+            $compartidos_beneficio = $compartidos_ingresos - $compartidos_gastos;
             ?>
 
-            <div style="margin:14px auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:600px;">
-                <div style="flex:0 0 220px;max-width:220px;">
-                    <canvas id="chart-pie-all" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$total_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$total_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$total_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;" aria-label="Gráfico circular total gastos y beneficio"></canvas>
+            <div style="margin:14px auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:900px;">
+                <!-- Donut de Plantillas Propias -->
+                <div style="flex:1 1 280px;min-width:250px;text-align:center;">
+                    <h4 style="margin-bottom:12px;color:#0b69ff;"><svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Mis Plantillas</h4>
+                    <canvas id="chart-pie-propias" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$total_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$total_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$total_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;margin:0 auto;" aria-label="Gráfico circular propias"></canvas>
+                    <div style="margin-top:8px;font-size:0.9rem;color:#333;">
+                        <div><strong>Ingresos:</strong> <?php echo number_format($total_ingresos,2,',','.'); ?> €</div>
+                        <div><strong>Gastos:</strong> <?php echo number_format($total_gastos,2,',','.'); ?> €</div>
+                        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><strong>Beneficio:</strong> <?php echo number_format($total_beneficio,2,',','.'); ?> €</div>
+                    </div>
                 </div>
-                <div style="flex:1 1 260px;min-width:180px;font-size:0.95rem;color:#333;">
-                    <div><strong>Total Ingresos:</strong> <?php echo number_format($total_ingresos,2,',','.'); ?> €</div>
-                    <div><strong>Total Gastos:</strong> <?php echo number_format($total_gastos,2,',','.'); ?> €</div>
-                    <div><strong>Beneficio Total:</strong> <?php echo number_format($total_beneficio,2,',','.'); ?> €</div>
+
+                <!-- Donut de Plantillas Compartidas (si las hay) -->
+                <div style="flex:1 1 280px;min-width:250px;text-align:center;">
+                    <h4 style="margin-bottom:12px;color:#28a745;"><svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Plantillas Compartidas</h4>
+                    <canvas id="chart-pie-compartidas" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$compartidos_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$compartidos_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$compartidos_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;margin:0 auto;" aria-label="Gráfico circular compartidas"></canvas>
+                    <div style="margin-top:8px;font-size:0.9rem;color:#333;">
+                        <div><strong>Ingresos:</strong> <?php echo number_format($compartidos_ingresos,2,',','.'); ?> €</div>
+                        <div><strong>Gastos:</strong> <?php echo number_format($compartidos_gastos,2,',','.'); ?> €</div>
+                        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;"><strong>Beneficio:</strong> <?php echo number_format($compartidos_beneficio,2,',','.'); ?> €</div>
+                    </div>
                 </div>
             </div>
 
+            <h3>Mis Plantillas</h3>
             <ul class="plantillas-lista">
-                <?php foreach ($plantillas as $plantilla) : ?>
+                <?php foreach ($mis_plantillas as $plantilla) : ?>
                     <?php try { ?>
                     <li class="plantillas-item">
                         <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>">
@@ -390,7 +505,14 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                         $ingresos = 0.0;
                         $gastos = 0.0;
                         if (!empty($plantilla['contenido'])) {
-                            $decoded = json_decode($plantilla['contenido'], true);
+                            try {
+                                // 🔐 DESENCRIPTAR contenido
+                                $contenido_desencriptado = decrypt_content($plantilla['contenido']);
+                                $decoded = json_decode($contenido_desencriptado, true);
+                            } catch (Exception $e) {
+                                // Si falla, intentar JSON directo (compatibilidad)
+                                $decoded = json_decode($plantilla['contenido'], true);
+                            }
                             if (is_array($decoded)) {
                                 // sum trabajos totals (try several keys)
                                 if (!empty($decoded['trabajo']) && is_array($decoded['trabajo'])) {
@@ -429,9 +551,9 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             <div style="flex:1 1 320px;max-width:320px;">
                                 <canvas id="chart-<?php echo $plantilla['id']; ?>" class="plantilla-chart cm-chart-widget" data-type="bar" data-ingresos="<?php echo htmlspecialchars((string)$ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$gastos, ENT_QUOTES); ?>" width="320" height="120" style="display:block;max-width:320px;width:100%;height:auto;" aria-label="Gráfico de ingresos y gastos"></canvas>
                                 <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:8px;">
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="both">Todos</button>
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="ingresos">Ingresos</button>
-                                    <button type="button" class="chart-filter" data-target="<?php echo $plantilla['id']; ?>" data-mode="gastos">Gastos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="both">Todos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="ingresos">Ingresos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-<?php echo $plantilla['id']; ?>" data-mode="gastos">Gastos</button>
                                 </div>
                             </div>
                         </div>
@@ -440,12 +562,11 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             <em>No hay datos suficientes para mostrar gráficos.</em>
                         </div>
                         <?php endif; ?>
-                        <form method="post" data-plantilla-form="<?php echo $plantilla['id']; ?>" style="display: inline;">
+                        <form method="post" action="<?php echo BASE_URL; ?>/pags/micuenta.php?section=dashboard" data-plantilla-form="<?php echo $plantilla['id']; ?>" style="display: inline;">
                             <?php echo csrf_input(); ?>
                             <input type="hidden" name="eliminar_plantilla" value="<?php echo $plantilla['id']; ?>">
                             <button type="button" class="delete-btn" data-plantilla-id="<?php echo $plantilla['id']; ?>">Eliminar</button>
                             <button type="button" class="share-btn" data-plantilla-id="<?php echo $plantilla['id']; ?>">Compartir</button>
-
                         </form>
                     </li>
                     <?php } catch (Throwable $th) {
@@ -458,6 +579,139 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                     <?php } ?>
                 <?php endforeach; ?>
             </ul>
+
+            <!-- Plantillas compartidas conmigo -->
+            <h3>Plantillas Compartidas Conmigo</h3>
+            <?php if (empty($plantillas_compartidas_conmigo)): ?>
+                <p style="color:#999;font-style:italic;">No tienes plantillas compartidas aún.</p>
+            <?php else: ?>
+            <ul class="plantillas-lista">
+                <?php foreach ($plantillas_compartidas_conmigo as $plantilla) : ?>
+                    <?php try { ?>
+                    <li class="plantillas-item">
+                        <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>">
+                            <?php echo htmlspecialchars($plantilla['nombre']); ?>
+                        </a>
+                        <div style="font-size:0.85rem;color:#666;font-style:italic;">
+                            <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Compartida por: <?php echo htmlspecialchars($plantilla['compartida_por']); ?>
+                        </div>
+                        <?php
+                        // Prepare summary numbers for a small chart: ingresos (trabajos) and gastos (variables + fijos)
+                        $ingresos = 0.0;
+                        $gastos = 0.0;
+                        if (!empty($plantilla['contenido'])) {
+                            try {
+                                // 🔐 DESENCRIPTAR contenido
+                                $contenido_desencriptado = decrypt_content($plantilla['contenido']);
+                                $decoded = json_decode($contenido_desencriptado, true);
+                            } catch (Exception $e) {
+                                // Si falla, intentar JSON directo (compatibilidad)
+                                $decoded = json_decode($plantilla['contenido'], true);
+                            }
+                            if (is_array($decoded)) {
+                                // sum trabajos totals (try several keys)
+                                if (!empty($decoded['trabajo']) && is_array($decoded['trabajo'])) {
+                                    foreach ($decoded['trabajo'] as $t) {
+                                        // prefer server-calculated 'total' if present
+                                        if (isset($t['total']) && $t['total'] !== '') {
+                                            $ingresos += floatval($t['total']);
+                                        } elseif (isset($t['aplicado_cg']) || isset($t['aplicado_take'])) {
+                                            $ingresos += floatval($t['aplicado_cg'] ?? 0) + floatval($t['aplicado_take'] ?? 0);
+                                        }
+                                    }
+                                }
+                                // sum gastos
+                                if (!empty($decoded['gastos_variables']) && is_array($decoded['gastos_variables'])) {
+                                    foreach ($decoded['gastos_variables'] as $gv) {
+                                        $gastos += floatval($gv['monto'] ?? 0);
+                                    }
+                                }
+                                if (!empty($decoded['gastos_fijos']) && is_array($decoded['gastos_fijos'])) {
+                                    foreach ($decoded['gastos_fijos'] as $gf) {
+                                        $gastos += floatval($gf['monto'] ?? 0);
+                                    }
+                                }
+                            }
+                        }
+                        ?>
+
+                        <?php
+                        // Solo renderizar los gráficos si tenemos valores no nulos que mostrar. Evitar crear canvases vacíos cuando no hay datos.
+                        $beneficio = $ingresos - $gastos;
+                        $show_charts = (abs($ingresos) > 0.0001) || (abs($gastos) > 0.0001);
+                        if ($show_charts) :
+                        ?>
+                        <div style="margin-top:8px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                            <!-- Fixed size canvas using attributes to avoid Chart.js resize loop (prevents infinite height bug) -->
+                            <div style="flex:1 1 320px;max-width:320px;">
+                                <canvas id="chart-shared-<?php echo $plantilla['id']; ?>" class="plantilla-chart cm-chart-widget" data-type="bar" data-ingresos="<?php echo htmlspecialchars((string)$ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$gastos, ENT_QUOTES); ?>" width="320" height="120" style="display:block;max-width:320px;width:100%;height:auto;" aria-label="Gráfico de ingresos y gastos"></canvas>
+                                <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:8px;">
+                                    <button type="button" class="chart-filter" data-target="chart-shared-<?php echo $plantilla['id']; ?>" data-mode="both">Todos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-shared-<?php echo $plantilla['id']; ?>" data-mode="ingresos">Ingresos</button>
+                                    <button type="button" class="chart-filter" data-target="chart-shared-<?php echo $plantilla['id']; ?>" data-mode="gastos">Gastos</button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div style="margin-top:8px;padding:10px;border-radius:6px;background:rgba(0,0,0,0.02);color:#666;font-size:0.95rem;">
+                            <em>No hay datos suficientes para mostrar gráficos.</em>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php 
+                        // Calcular permisos según rol
+                        $rol = $plantilla['rol'] ?? 'lector';
+                        $isReadOnly = $rol === 'lector';
+                        $canEdit = in_array($rol, ['editor', 'admin']);
+                        $canShare = $rol === 'admin';
+                        
+                        // Determinar mensaje y acciones según rol
+                        $roleLabel = ucfirst($rol);
+                        $roleColor = [
+                            'admin' => '#28a745',      // verde
+                            'editor' => '#0c5460',     // azul
+                            'lector' => '#856404'      // naranja
+                        ][$rol] ?? '#666';
+                        $roleBg = [
+                            'admin' => '#d4edda',      // verde claro
+                            'editor' => '#d1ecf1',     // azul claro
+                            'lector' => '#fff3cd'      // amarillo claro
+                        ][$rol] ?? '#f0f0f0';
+                        ?>
+                        
+                        <div style="margin-top:8px;padding:8px 10px;border-radius:4px;background:<?php echo $roleBg; ?>;color:<?php echo $roleColor; ?>;font-size:0.9rem;border:1px solid <?php echo $roleColor; ?>;">
+                            <strong>Tu rol:</strong> <?php echo htmlspecialchars($roleLabel); ?>
+                        </div>
+                        
+                        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                            <?php if ($canEdit): ?>
+                            <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>" style="display:inline-block;padding:8px 14px;background:#0b69ff;color:#fff;border-radius:4px;text-decoration:none;font-size:0.9rem;font-weight:500;">
+                                ✎ Editar
+                            </a>
+                            <?php elseif ($isReadOnly): ?>
+                            <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>" style="display:inline-block;padding:8px 14px;background:#6c757d;color:#fff;border-radius:4px;text-decoration:none;font-size:0.9rem;font-weight:500;">
+                                <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Ver
+                            </a>
+                            <?php endif; ?>
+                            
+                            <?php if ($canShare): ?>
+                            <button type="button" class="share-btn-shared" data-plantilla-id="<?php echo $plantilla['id']; ?>" style="padding:8px 14px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;font-weight:500;">
+                                <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Administrar acceso
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                    <?php } catch (Throwable $th) {
+                        // capture rendering errors per-item and continue
+                        $GLOBALS['__php_errors'][] = ['type' => 'render', 'message' => $th->getMessage(), 'file' => $th->getFile(), 'line' => $th->getLine()];
+                        ?>
+                        <li class="plantillas-item">
+                            <div style="background:#fff5f5;border:1px solid #f5c6cb;color:#721c24;padding:10px;border-radius:6px;">Error al renderizar esta plantilla. Revisa la consola para más detalles.</div>
+                        </li>
+                    <?php } ?>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
 
             <?php // Usar los componentes ShareModal y ConfirmModal en lugar del popup inline. ?>
             <?php include __DIR__ . '/../src/components/notice.php'; ?>
@@ -474,8 +728,12 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     (function(){
-    // Envío AJAX para crear plantilla: mostrar un banner inline bajo el contenido
-    // en lugar de navegar fuera o abrir una página intersticial separada.
+    // Envío AJAX para crear plantilla: 
+    // 1. Envía POST al handler de creación (crear_plantilla_handler.php)
+    // 2. Recarga la lista de plantillas desde obtener_plantillas.php
+    // 3. Verifica que la nueva plantilla está en la lista
+    // 4. Si está: éxito y redirige al editor
+    // 5. Si NO está: muestra error
     var form = document.getElementById('form-crear-plantilla');
     if (form) {
         form.addEventListener('submit', function(ev){
@@ -483,38 +741,76 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
             var submitBtn = form.querySelector('button[type=submit]');
             if (submitBtn) submitBtn.disabled = true;
             var fd = new FormData(form);
-            // ensure server sees the crear_plantilla key
-            if (!fd.has('crear_plantilla')) fd.append('crear_plantilla','1');
-
-            fetch(window.location.href, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            var nombrePlantilla = fd.get('nombre_plantilla');
+            
+            console.log('[AJAX] Iniciando creación de plantilla: ' + nombrePlantilla);
+            console.log('[AJAX] Enviando a: ' + form.action);
+            
+            // Paso 1: Enviar POST al handler de creación
+            fetch(form.action, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function(resp){
+                    console.log('[AJAX] Respuesta de creación: ' + resp.status);
                     if (!resp.ok) throw new Error('HTTP '+resp.status);
                     return resp.json();
                 })
                 .then(function(json){
-                    // use Notice to show success banner and redirect
-                    if (window.Notice && typeof window.Notice.show === 'function') {
-                        var link = json.redirect ? (' <a href="'+json.redirect+'">Ir ahora</a>') : '';
-                        window.Notice.show('success','<strong>Plantilla creada.</strong> Redirigiendo al editor...'+link, 3000);
-                    } else {
-                        // fallback to inline banner
-                        var banner = document.getElementById('create-banner');
-                        if (!banner) {
-                            banner = document.createElement('div');
-                            banner.id = 'create-banner';
-                            banner.style.margin = '12px 0';
-                            banner.style.padding = '12px';
-                            banner.style.borderRadius = '8px';
-                            banner.style.background = '#f8f9fa';
-                            banner.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                            form.parentNode.insertBefore(banner, form.nextSibling);
-                        }
-                        banner.innerHTML = '<strong>Plantilla creada.</strong> Redirigiendo al editor... <span style="margin-left:8px"><a id="create-banner-link" href="'+(json.redirect||'#')+'">Ir ahora</a></span>';
+                    console.log('[AJAX] JSON recibido:', json);
+                    
+                    if (!json.success) {
+                        throw new Error(json.error || 'Error desconocido');
                     }
-                    setTimeout(function(){ window.location.href = json.redirect || window.location.href; }, 900);
+                    
+                    // Paso 2: Recargar lista de plantillas
+                    console.log('[AJAX] Recargando lista de plantillas...');
+                    return fetch('/funciones/obtener_plantillas.php', { credentials: 'same-origin' })
+                        .then(function(resp){
+                            console.log('[AJAX] Respuesta de obtener_plantillas: ' + resp.status);
+                            if (!resp.ok) throw new Error('HTTP '+resp.status+' al cargar plantillas');
+                            return resp.json();
+                        })
+                        .then(function(plantillasData){
+                            console.log('[AJAX] Plantillas recibidas:', plantillasData);
+                            
+                            // Paso 3: Verificar que la nueva plantilla existe en la lista
+                            var encontrada = false;
+                            if (plantillasData.plantillas && Array.isArray(plantillasData.plantillas)) {
+                                encontrada = plantillasData.plantillas.some(function(p){
+                                    console.log('[AJAX] Comparando "' + p.nombre + '" con "' + nombrePlantilla + '"');
+                                    return p.nombre === nombrePlantilla;
+                                });
+                            }
+                            
+                            console.log('[AJAX] ¿Plantilla encontrada?: ' + encontrada);
+                            
+                            if (!encontrada) {
+                                throw new Error('Plantilla no encontrada en la lista después de crear');
+                            }
+                            
+                            // Paso 4: Éxito - mostrar banner y redirigir
+                            console.log('[AJAX] Éxito - mostrando banner y redirigiendo a: ' + json.redirect);
+                            if (window.Notice && typeof window.Notice.show === 'function') {
+                                var link = json.redirect ? (' <a href="'+json.redirect+'">Ir ahora</a>') : '';
+                                window.Notice.show('success','<strong>Plantilla creada.</strong> Redirigiendo al editor...'+link, 3000);
+                            } else {
+                                var banner = document.getElementById('create-banner');
+                                if (!banner) {
+                                    banner = document.createElement('div');
+                                    banner.id = 'create-banner';
+                                    banner.style.margin = '12px 0';
+                                    banner.style.padding = '12px';
+                                    banner.style.borderRadius = '8px';
+                                    banner.style.background = '#f8f9fa';
+                                    banner.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                                    form.parentNode.insertBefore(banner, form.nextSibling);
+                                }
+                                banner.innerHTML = '<strong>Plantilla creada.</strong> Redirigiendo al editor... <span style="margin-left:8px"><a id="create-banner-link" href="'+(json.redirect||'#')+'">Ir ahora</a></span>';
+                            }
+                            setTimeout(function(){ window.location.href = json.redirect || window.location.href; }, 900);
+                        });
                 })
                 .catch(function(err){
-                    console.error('Error creando plantilla:', err);
+                    console.error('[AJAX] Error:', err.message);
+                    console.error('[AJAX] Stack:', err.stack);
                     var banner = document.getElementById('create-banner');
                     if (!banner) { banner = document.createElement('div'); banner.id='create-banner'; form.parentNode.insertBefore(banner, form.nextSibling); }
                     banner.style.background = '#fff5f5'; banner.style.border = '1px solid #f5c6cb'; banner.style.color = '#721c24';
@@ -526,6 +822,93 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
     })();
 </script>
 <script src="<?php echo BASE_URL; ?>/src/js/components/chart-widget.js"></script>
+
+<!-- Buscador y Ordenamiento de Plantillas -->
+<script>
+(function(){
+    const searchInput = document.getElementById('search-plantillas');
+    const sortSelect = document.getElementById('sort-plantillas');
+    const misPlantillasLista = document.querySelectorAll('h3')[1]?.nextElementSibling; // Después de "Mis Plantillas"
+    const compartidosLista = document.querySelectorAll('h3')[2]?.nextElementSibling; // Después de "Plantillas Compartidas"
+    
+    if (!searchInput || !sortSelect) return;
+    
+    // Función para filtrar y ordenar plantillas
+    function filterAndSort() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const sortMethod = sortSelect.value;
+        
+        // Obtener todas las listas
+        const allListas = document.querySelectorAll('.plantillas-lista');
+        
+        allListas.forEach(lista => {
+            // Obtener items
+            let items = Array.from(lista.querySelectorAll('.plantillas-item'));
+            
+            // Calcular ingresos para cada item (para ordenar)
+            items.forEach(item => {
+                const canvas = item.querySelector('canvas[data-ingresos]');
+                item.dataset.ingresos = canvas ? parseFloat(canvas.dataset.ingresos || 0) : 0;
+                item.dataset.nombre = (item.querySelector('a')?.textContent || '').toLowerCase();
+                item.dataset.visible = searchTerm === '' || item.dataset.nombre.includes(searchTerm);
+            });
+            
+            // Ordenar según selección
+            items.sort((a, b) => {
+                if (sortMethod === 'reciente') return 0; // Mantener orden original
+                if (sortMethod === 'antiguo') return items.length - 1; // Invertir orden
+                if (sortMethod === 'nombre-asc') return a.dataset.nombre.localeCompare(b.dataset.nombre);
+                if (sortMethod === 'nombre-desc') return b.dataset.nombre.localeCompare(a.dataset.nombre);
+                if (sortMethod === 'ingresos-desc') return parseFloat(b.dataset.ingresos) - parseFloat(a.dataset.ingresos);
+                if (sortMethod === 'ingresos-asc') return parseFloat(a.dataset.ingresos) - parseFloat(b.dataset.ingresos);
+                return 0;
+            });
+            
+            // Aplicar orden y filtro
+            items.forEach((item, index) => {
+                if (item.dataset.visible === 'true') {
+                    item.classList.remove('hidden');
+                    // Alternar subrayado
+                    if (searchTerm !== '' && searchInput.value.trim() !== '') {
+                        item.classList.add('highlighted');
+                    } else {
+                        item.classList.remove('highlighted');
+                    }
+                } else {
+                    item.classList.add('hidden');
+                }
+                // Insertar en orden
+                lista.appendChild(item);
+            });
+            
+            // Mostrar mensaje si no hay resultados
+            const visibleCount = items.filter(i => i.dataset.visible === 'true').length;
+            if (visibleCount === 0 && searchTerm !== '') {
+                if (!lista.nextElementSibling?.classList.contains('no-results')) {
+                    const msg = document.createElement('div');
+                    msg.className = 'no-results';
+                    msg.style.cssText = 'padding:12px;text-align:center;color:#999;font-style:italic;';
+                    msg.textContent = `No se encontraron plantillas con "${searchTerm}"`;
+                    lista.parentNode.insertBefore(msg, lista.nextSibling);
+                }
+            } else {
+                // Eliminar mensaje de sin resultados si existe
+                const msg = lista.nextElementSibling;
+                if (msg?.classList.contains('no-results')) {
+                    msg.remove();
+                }
+            }
+        });
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', filterAndSort);
+    sortSelect.addEventListener('change', filterAndSort);
+    
+    // Inicializar con estado actual
+    filterAndSort();
+})();
+</script>
 
 <?php if (!$isIncluded): ?>
 </body>

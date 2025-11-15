@@ -79,9 +79,9 @@
 
 | Persona | Horas | % Total | Áreas Principales |
 |---------|-------|---------|-------------------|
-| **Álvaro Balas ** | ~29 horas | **50%** | Backend, eventos, validación, documentación, diseño |
-| **Miguel Ángel Prieto** | ~29 horas | **50%** | Diseño visual, CSS, paleta de colores, componentes, UX |
-| **TOTAL** | **58 horas** | **100%** | Desarrollo completo |
+| **Álvaro Balas** | 39 horas | **57%** | Backend, eventos, validación, documentación, diseño, atajos de teclado |
+| **Miguel Ángel Prieto** | 29 horas | **43%** | Diseño visual, CSS, paleta de colores, componentes, UX |
+| **TOTAL** | **68 horas** | **100%** | Desarrollo completo |
 
 ---
 
@@ -100,34 +100,37 @@
 
 ### Criterios de Compensación
 
-- [x] **Balas:** Contribución integral (backend, frontend, eventos, validación)
-- [x] **Prieto:** Contribución integral (diseño, UX, CSS, componentes)
-- [x] **Complementariedad:** Ambos contribuyeron equitativamente en todas las áreas
-- [x] **Equilibrio:** Balas 50% + Prieto 50% = **PERFECTAMENTE EQUILIBRADO**
+- [x] **Balas:** Contribución integral (backend, frontend, eventos, validación, atajos de teclado, features avanzadas)
+- [x] **Prieto:** Contribución integral (diseño, UX, CSS, componentes, visual)
+- [x] **Complementariedad:** Ambos contribuyeron de forma coordinada en todas las áreas
+- [x] **Equilibrio:** Balas 57% (39h) + Prieto 43% (29h) = **TOTAL 68 HORAS**
 
 ### Justificación
 
-El proyecto fue desarrollado de forma **colaborativa y equitativa**:
-- **Ambos participaron activamente** en análisis, diseño, implementación y testing
-- **Especialización sin exclusión:** Cada uno aportó expertise en su área pero también contribuyó en otras
-- **División equitativa de horas:** Aproximadamente 29 horas por persona
+El proyecto fue desarrollado de forma **colaborativa y especializada**:
+- **Álvaro Balas (39h - 57%):** Liderazgo técnico backend, implementación de features complejas (sistema de compartir con encriptación, atajos de teclado, validación, documentación)
+- **Miguel Ángel Prieto (29h - 43%):** Diseño visual, UX, componentes CSS reutilizables, paleta de colores y coherencia visual
+- **Complementariedad:** Cada uno aportó expertise especializado manteniendo coordinación constante
 - **Ambos responsables del éxito del proyecto** de forma compartida
 
 ---
 
 ## COMENTARIOS ADICIONALES
 
-### Contribución de Álvaro Balas
+### Contribución de Álvaro Balas (39 horas)
 - Arquitectura general del proyecto
-- Implementación segura (CSRF, sesiones, hashing)
-- JavaScript interactivo (hamburger menu, eventos)
-- Documentación técnica
+- Implementación segura (CSRF, sesiones, hashing, encriptación AES-256-GCM)
+- Backend completo (MySQL, PHP, endpoints, validación)
+- Sistema de compartir con roles (propietario, admin, editor, lector)
+- JavaScript interactivo (hamburger menu, eventos, validación)
+- Sistema de atajos de teclado (Ctrl+S, Ctrl+N, Ctrl+Alt+V, etc.)
+- Documentación técnica (README.md, CHANGELOG.md)
 - Testing y validación responsiva
-- Backend completo (MySQL, PHP, endpoints)
 - Mejoras CSS y diseño responsivo
-- Componentes visuales
+- Componentes visuales avanzados
+- 4-layer security contra manipulación DevTools
 
-### Contribución de Miguel Ángel Prieto
+### Contribución de Miguel Ángel Prieto (29 horas)
 - Paleta de colores y variables CSS
 - Mejora de tipografía y contraste
 - Estilos CSS coherentes y reutilizables
@@ -136,3 +139,4 @@ El proyecto fue desarrollado de forma **colaborativa y equitativa**:
 - Feedback visual y diseño responsive
 - Validación de conceptos visuales
 - Testing de usabilidad
+- Mejoras de interfaz y experiencia de usuario

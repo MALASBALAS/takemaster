@@ -56,22 +56,21 @@
 
     confirmBtn && confirmBtn.addEventListener('click', function(){
         if(!targetId) return close();
-        // find the form associated to this plantilla
+        
+        // Buscar el formulario con el token CSRF
         var form = document.querySelector('form[data-plantilla-form="'+targetId+'"]');
         if(!form){
-            // fallback: try to find input with name eliminar_plantilla and value
-            form = Array.from(document.forms).find(function(f){
-                var inp = f.querySelector('input[name="eliminar_plantilla"]');
-                return inp && inp.value === targetId.toString();
-            });
-        }
-        if(form){
-            // submit the form
-            form.submit();
-        } else {
             console.warn('No se encontró formulario para eliminar plantilla', targetId);
+            close();
+            return;
         }
+        
+        console.log('[DELETE] Enviando formulario de eliminación de plantilla:', targetId);
+        
+        // Enviar el formulario tradicional (POST a dashboard.php que está incluido en micuenta.php)
+        // El servidor elimina la plantilla y redirige a micuenta.php?section=dashboard
         close();
+        form.submit();
     });
 
     cancelBtn && cancelBtn.addEventListener('click', close);

@@ -22,7 +22,7 @@ if ($now - $_SESSION['login_rl'][$ip]['first'] > LOGIN_RATE_LIMIT_WINDOW_MIN * 6
 
 // Verificar si el usuario ya ha iniciado sesión
 if (isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
+    header("Location: " . BASE_URL . "/dashboard/dashboard.php");
     exit;
 }
 
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $username;
                 // Reset rate limiter on success
                 $_SESSION['login_rl'][$ip] = ['count' => 0, 'first' => $now];
-                header("Location: /index.php");
+                header("Location: " . BASE_URL . "/pags/micuenta.php?section=dashboard");
                 exit;
             } else {
                 $errors[] = "Contraseña incorrecta.";
@@ -119,6 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
     </div>
     <br>
+    <br>
+        <br>
     <br>
     <?php include __DIR__ . '/../src/nav/footer.php'; ?>
 </body>

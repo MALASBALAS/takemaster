@@ -39,7 +39,15 @@ require_once __DIR__ . '/src/nav/config.php';
     <h2>Optimiza tu gestión profesional como actor</h2>
    
     <p><strong>Registra tus jornadas laborales y proyecta tus ingresos</strong> con <i>Takemaster</i>, la plataforma especializada para <b>actores de doblaje en España</b>.</p>
-    <a href="<?= BASE_URL ?>/auth/register.php" class="cta center">Comienza hoy</a>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+        <?php if (isset($_SESSION['username'])): ?>
+            <a href="<?= BASE_URL ?>/pags/micuenta.php?section=dashboard" class="cta" style="background:#e8e8e8;color:#0b69ff;font-weight:bold;font-size:1.1rem;">Entrar ahora</a>
+            <a href="<?= BASE_URL ?>/pags/micuenta.php?section=dashboard" class="cta" style="background:#0b69ff;color:#ffffff;font-weight:bold;font-size:1.1rem;">Mi cuenta</a>
+        <?php else: ?>
+            <a href="<?= BASE_URL ?>/auth/register.php" class="cta">Comienza hoy</a>
+            <a href="<?= BASE_URL ?>/auth/login.php" class="cta" style="background:#0b69ff;color:#ffffff;font-weight:bold;font-size:1.1rem;">Entrar en mi cuenta</a>
+        <?php endif; ?>
+    </div>
 </section>
 <hr>
 
@@ -109,7 +117,15 @@ require_once __DIR__ . '/src/nav/config.php';
 <section class="center">
     <h2>Únete a Takemaster</h2>
     <p>Empieza a gestionar tu carrera como actor con Takemaster y alcanza tus metas profesionales.</p>
-    <a href="<?= BASE_URL ?>/auth/register.php" class="cta">Comienza hoy</a>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+        <?php if (isset($_SESSION['username'])): ?>
+            <a href="<?= BASE_URL ?>/pags/micuenta.php?section=dashboard" class="cta" style="background:#e8e8e8;color:#0b69ff;font-weight:bold;font-size:1.1rem;">Entrar ahora</a>
+            <a href="<?= BASE_URL ?>/pags/micuenta.php?section=dashboard" class="cta" style="background:#0b69ff;color:#ffffff;font-weight:bold;font-size:1.1rem;">Mi cuenta</a>
+        <?php else: ?>
+            <a href="<?= BASE_URL ?>/auth/register.php" class="cta">Comienza hoy</a>
+            <a href="<?= BASE_URL ?>/auth/login.php" class="cta" style="background:#0b69ff;color:#ffffff;font-weight:bold;font-size:1.1rem;">Entrar en mi cuenta</a>
+        <?php endif; ?>
+    </div>
 </section>
 <br>
     </div>

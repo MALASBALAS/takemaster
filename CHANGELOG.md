@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## 2025-11-13 (Session 27f - Security & Permissions)
+- **Sistema de Compartir con Roles (Share Function) - PRODUCCIÓN:**
+  - ✅ Corregido bug persistencia de rol: roles ahora se guardan correctamente en `plantillas_compartidas` (compartir_plantilla.php)
+  - ✅ Implementados 4 roles: lector (lectura), editor (editar), admin (editar+compartir), propietario (total)
+  - ✅ Validación de roles en obtención de compartidos (obtener_compartidos.php)
+  - ✅ Interfaz de selección de roles en frontend (share-modal.js)
+
+- **Seguridad contra Manipulación via DevTools - 4 Capas:**
+  - **Capa 1:** HTML `disabled` attributes + CSS opacity + JavaScript DOM disabling
+  - **Capa 2:** Hidden role tokens (`user_role_token`, `can_edit_token`) validados antes de AJAX
+  - **Capa 3:** Backend `require_plantilla_edit_access()` valida en database (funciones/validate_plantilla_access.php)
+  - **Capa 4:** Logging de intentos de seguridad en error_log del servidor
+  - ✅ Lector users completamente bloqueados de guardar, incluso removiendo HTML disabled con DevTools
+
+- **Validación Backend de Permisos - CRÍTICO:**
+  - ✅ Creada función centralizada `validate_plantilla_access()` (funciones/validate_plantilla_access.php)
+  - ✅ Corregido bug HTTP 500 en usuarios ADMIN en plantillas compartidas
+  - ✅ Modificada `actualizar_plantilla_segura()` para validar ambos: propiedad AND roles en plantillas_compartidas
+  - ✅ ADMIN/EDITOR ahora pueden guardar cambios en plantillas compartidas
+  - ✅ Rechazadas modificaciones de LECTOR users por backend (no solo frontend)
+
+- **Dashboard Refactorizado - RECUPERADO:**
+  - ✅ Limpieza de archivo dashboard.php (160 líneas limpias, sin corrupción)
+  - ✅ Creadas funciones helper en funciones/dashboard_helpers.php
+  - ✅ Dashboard muestra plantillas propias y plantillas compartidas conmigo
+  - ✅ Indicadores de rol en plantillas compartidas (Lector/Editor/Admin)
+
+- **Campos Dinámicos de Formulario:**
+  - ✅ CGs: Requerido (obligatorio)
+  - ✅ Takes: Ahora opcional (sin `required` attribute)
+  - ✅ Cálculos automáticos manejan valores nulos correctamente
+
+- **Validación de Datos Encriptados:**
+  - ✅ Encriptación de contenido de plantillas en BD (AES-256-GCM)
+  - ✅ Desencriptación automática en lectura
+  - ✅ Claves de encriptación rotadas con ENCRYPTION_KEY de .env
+
 ## 2025-11-09
 - **Responsive Design Completo:** Implementación integral de diseño responsivo en todas las páginas del proyecto.
   - Añadido meta viewport `content="width=device-width, initial-scale=1"` a todas las páginas (10+ ficheros): `index.php`, `auth/login.php`, `auth/register.php`, `pags/micuenta.php`, `pags/miplantilla.php`, `pags/about.php`, `pags/contact.php`, `pags/privacy.php`, `pags/terms.php`, `dashboard/dashboard.php`, `dashboard/configuracion.php`
