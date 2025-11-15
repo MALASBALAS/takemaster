@@ -67,7 +67,7 @@ $canvas_id = $is_shared ? 'chart-shared-' . $plantilla['id'] : 'chart-' . $plant
     
     <?php if ($is_shared): ?>
     <div style="font-size:0.85rem;color:#666;font-style:italic;">
-        📤 Compartida por: <?php echo htmlspecialchars($plantilla['compartida_por']); ?>
+        <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Compartida por: <?php echo htmlspecialchars($plantilla['compartida_por']); ?>
     </div>
     <?php endif; ?>
     
@@ -111,14 +111,14 @@ $canvas_id = $is_shared ? 'chart-shared-' . $plantilla['id'] : 'chart-' . $plant
         <?php elseif ($permisos['isReadOnly']): ?>
         <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>" 
             style="display:inline-block;padding:8px 14px;background:#6c757d;color:#fff;border-radius:4px;text-decoration:none;font-size:0.9rem;font-weight:500;">
-            👁️ Ver
+            <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Ver
         </a>
         <?php endif; ?>
         
         <?php if ($permisos['canShare']): ?>
         <button type="button" class="share-btn-shared" data-plantilla-id="<?php echo $plantilla['id']; ?>" 
             style="padding:8px 14px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;font-weight:500;">
-            📤 Administrar acceso
+            <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Administrar acceso
         </button>
         <?php endif; ?>
     </div>

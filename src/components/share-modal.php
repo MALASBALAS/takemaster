@@ -153,6 +153,7 @@
     font-size: clamp(0.9rem, 1.8vw, 1rem);
     font-family: inherit;
     transition: border-color 0.2s ease;
+    margin-bottom: 0 !important;
 }
 
 .share-modal__role {
@@ -163,7 +164,7 @@
     background: white;
     cursor: pointer;
     transition: border-color 0.2s ease;
-    min-width: 10vh;
+    max-width: 10vh;
 }
 
 .share-modal__email:focus {

@@ -93,7 +93,7 @@
             removeBtn.type = 'button';
             removeBtn.className = 'share-modal__remove-btn';
             removeBtn.textContent = '✕';
-            removeBtn.style.cssText = 'background:none;border:none;color:#999;cursor:pointer;font-size:1.2rem;padding:0.4vh 0.8vh;border-radius:0.4vh;transition:all 0.2s;flex-shrink:0;';
+            removeBtn.style.cssText = 'background:none;border:none;color:#999;cursor:pointer;font-size:1.2rem;padding:0.4vh 0.8vh;border-radius:0.4vh;transition:all 0.2s;flex-shrink:0;width:2vw;height:2vw;display:flex;align-items:center;justify-content:center;';
             
             removeBtn.addEventListener('mouseenter', function(){ this.style.background = 'rgba(0,0,0,0.08)'; this.style.color = '#333'; });
             removeBtn.addEventListener('mouseleave', function(){ this.style.background = 'none'; this.style.color = '#999'; });

@@ -15,7 +15,7 @@ $success = "";
 
 // Verificar si el usuario ya ha iniciado sesión
 if (isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
+    header("Location: " . BASE_URL . "/dashboard/dashboard.php");
     exit;
 }
 
@@ -58,7 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('sssi', $username, $email, $hashed_password, $role_id);
         
         if ($stmt->execute()) {
-            $success = "Usuario registrado exitosamente.";
+            // Auto-login after successful registration
+            $user_id = $conn->insert_id;
+            regen_session();
+            $_SESSION['user_id'] = (int)$user_id;
+            $_SESSION['username'] = $username;
+            
+            // Redirect to dashboard
+            header("Location: " . BASE_URL . "/dashboard/dashboard.php");
+            exit;
         } else {
             $errors[] = "Error al registrar usuario. Inténtelo de nuevo.";
         }

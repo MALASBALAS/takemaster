@@ -329,7 +329,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
             <!-- Buscador y Ordenar -->
             <div style="margin:20px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;">
                 <div style="flex:1 1 250px;min-width:200px;">
-                    <input type="text" id="search-plantillas" placeholder="🔍 Buscar plantilla..." style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.95rem;">
+                    <input type="text" id="search-plantillas" placeholder="Buscar plantilla..." style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.95rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22%3E%3Ccircle cx=%2211%22 cy=%2711%22 r=%228%22/%3E%3Cline x1=%2721%22 y1=%2721%22 x2=%2216.65%22 y2=%2716.65%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center;background-size:20px;padding-right:32px;">
                 </div>
                 <div style="flex:0 1 auto;">
                     <label for="sort-plantillas" style="margin-right:8px;font-weight:500;">Ordenar por:</label>
@@ -471,7 +471,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
             <div style="margin:14px auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:900px;">
                 <!-- Donut de Plantillas Propias -->
                 <div style="flex:1 1 280px;min-width:250px;text-align:center;">
-                    <h4 style="margin-bottom:12px;color:#0b69ff;">📊 Mis Plantillas</h4>
+                    <h4 style="margin-bottom:12px;color:#0b69ff;"><svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Mis Plantillas</h4>
                     <canvas id="chart-pie-propias" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$total_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$total_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$total_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;margin:0 auto;" aria-label="Gráfico circular propias"></canvas>
                     <div style="margin-top:8px;font-size:0.9rem;color:#333;">
                         <div><strong>Ingresos:</strong> <?php echo number_format($total_ingresos,2,',','.'); ?> €</div>
@@ -482,7 +482,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
 
                 <!-- Donut de Plantillas Compartidas (si las hay) -->
                 <div style="flex:1 1 280px;min-width:250px;text-align:center;">
-                    <h4 style="margin-bottom:12px;color:#28a745;">📤 Plantillas Compartidas</h4>
+                    <h4 style="margin-bottom:12px;color:#28a745;"><svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Plantillas Compartidas</h4>
                     <canvas id="chart-pie-compartidas" class="cm-chart-widget" data-type="doughnut" data-ingresos="<?php echo htmlspecialchars((string)$compartidos_ingresos, ENT_QUOTES); ?>" data-gastos="<?php echo htmlspecialchars((string)$compartidos_gastos, ENT_QUOTES); ?>" data-beneficio="<?php echo htmlspecialchars((string)$compartidos_beneficio, ENT_QUOTES); ?>" width="200" height="200" style="display:block;max-width:220px;width:100%;height:auto;margin:0 auto;" aria-label="Gráfico circular compartidas"></canvas>
                     <div style="margin-top:8px;font-size:0.9rem;color:#333;">
                         <div><strong>Ingresos:</strong> <?php echo number_format($compartidos_ingresos,2,',','.'); ?> €</div>
@@ -593,7 +593,7 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             <?php echo htmlspecialchars($plantilla['nombre']); ?>
                         </a>
                         <div style="font-size:0.85rem;color:#666;font-style:italic;">
-                            📤 Compartida por: <?php echo htmlspecialchars($plantilla['compartida_por']); ?>
+                            <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Compartida por: <?php echo htmlspecialchars($plantilla['compartida_por']); ?>
                         </div>
                         <?php
                         // Prepare summary numbers for a small chart: ingresos (trabajos) and gastos (variables + fijos)
@@ -690,13 +690,13 @@ $isIncluded = realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME']);
                             </a>
                             <?php elseif ($isReadOnly): ?>
                             <a href="<?php echo BASE_URL; ?>/plantillas/miplantilla.php?id=<?php echo $plantilla['id']; ?>" style="display:inline-block;padding:8px 14px;background:#6c757d;color:#fff;border-radius:4px;text-decoration:none;font-size:0.9rem;font-weight:500;">
-                                👁️ Ver
+                                <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Ver
                             </a>
                             <?php endif; ?>
                             
                             <?php if ($canShare): ?>
                             <button type="button" class="share-btn-shared" data-plantilla-id="<?php echo $plantilla['id']; ?>" style="padding:8px 14px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;font-weight:500;">
-                                📤 Administrar acceso
+                                <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Administrar acceso
                             </button>
                             <?php endif; ?>
                         </div>

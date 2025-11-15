@@ -117,6 +117,48 @@ $descripcion = $contenido['descripcion'] ?? '';
 $comunidad = $contenido['comunidad'] ?? 'Madrid';
 // Persistir opción de usar neto (-15%) si existe en el contenido guardado
 $usarNeto = !empty($contenido['usar_neto']) ? true : false;
+ 
+// DEFINIR PERMISOS AQUÍ, ANTES DEL HTML
+$isReadOnly = !$plantilla['es_propia'] && $plantilla['rol'] === 'lector';
+$canEdit = $plantilla['es_propia'] || in_array($plantilla['rol'], ['editor', 'admin']);
+$canShare = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
+$canDeleteShares = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
+
+// Obtener estudios anteriores (SOLO de plantillas propias del usuario actual)
+$estudiosAnteriores = [];
+if ($canEdit) {
+    $stmtStudios = $conn->prepare("
+        SELECT DISTINCT contenido
+        FROM plantillas 
+        WHERE username = ? AND deleted_at IS NULL AND contenido IS NOT NULL AND contenido != ''
+        LIMIT 50
+    ");
+    if ($stmtStudios) {
+        $stmtStudios->bind_param('s', $username);
+        $stmtStudios->execute();
+        $resultStudios = $stmtStudios->get_result();
+        while ($row = $resultStudios->fetch_assoc()) {
+            if (!empty($row['contenido'])) {
+                try {
+                    $contenido_desencriptado = decrypt_content($row['contenido']);
+                    $decoded = json_decode($contenido_desencriptado, true);
+                    if (is_array($decoded) && !empty($decoded['trabajo'])) {
+                        foreach ($decoded['trabajo'] as $trabajo) {
+                            if (!empty($trabajo['estudio']) && !in_array($trabajo['estudio'], $estudiosAnteriores)) {
+                                $estudiosAnteriores[] = $trabajo['estudio'];
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Ignorar errores de desencriptación
+                    continue;
+                }
+            }
+        }
+        $stmtStudios->close();
+        sort($estudiosAnteriores);
+    }
+}
 
 // topnav will be included later in the template (avoid duplicate include here)
 
@@ -172,6 +214,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tipo_trabajo'])) {
     <meta name="can-share" content="<?php echo $canShare ? 'true' : 'false'; ?>">
     <meta name="can-delete-shares" content="<?php echo $canDeleteShares ? 'true' : 'false'; ?>">
     <meta name="is-owner" content="<?php echo $plantilla['es_propia'] ? 'true' : 'false'; ?>">
+    <style>
+        .estudio-autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        .estudio-autocomplete-dropdown {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 4px 4px;
+            min-width: 200px;
+        }
+        .estudio-autocomplete-dropdown.visible {
+            display: block;
+        }
+        .estudio-autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+        .estudio-autocomplete-item:hover {
+            background: #f0f0f0;
+        }
+        .estudio-autocomplete-item.selected {
+            background: #e3f2fd;
+        }
+        .estudio-autocomplete-item:last-child {
+            border-bottom: none;
+        }
+    </style>>
 </head>
 <body>
 <?php include __DIR__ . '/../src/nav/topnav.php'; ?>
@@ -194,26 +272,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div class="container center">
         <h1><?php echo htmlspecialchars($plantilla['nombre']); ?></h1>
-        <!-- Export button (CSV / XML) -->
+        <!-- Export button (CSV / XML) + Help button -->
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
             <div class="export-dropdown" style="position:relative;">
                 <button id="export-btn" class="button-submit" type="button">Exportar</button>
-                <div id="export-menu" class="export-menu" style="display:none; position:absolute; right:0; top:38px; background:#fff; border:1px solid var(--border); box-shadow:0 6px 18px rgba(0,0,0,0.08); border-radius:6px; z-index:40;">
+                <div id="export-menu" class="export-menu" style="display: block;position: absolute;left: 0%;top: 100%;background: rgb(255, 255, 255);border: 1px solid var(--border);box-shadow: rgba(0, 0, 0, 0.08) 0px 6px 18px;border-radius: 6px;z-index: 40;">
                     <button class="export-item" data-format="csv" style="display:block;padding:8px 14px;border:none;background:transparent;width:100%;text-align:left;cursor:pointer">Exportar a Excel (CSV)</button>
                     <button class="export-item" data-format="xml" style="display:block;padding:8px 14px;border:none;background:transparent;width:100%;text-align:left;cursor:pointer">Exportar a XML</button>
                 </div>
             </div>
             <div class="muted">Exporta la plantilla actual</div>
+            <button id="help-btn" class="button-submit" type="button" title="Ver atajos de teclado disponibles" style="width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#0b69ff;color:#fff;border:none;cursor:pointer;font-weight:bold;font-size:18px;">?</button>
         </div>
 
     <form id="form-guardar-plantilla" method="post" action="<?php echo BASE_URL; ?>/dashboard/guardar_plantilla.php">
             <?php echo csrf_input(); ?>
 
             <?php 
-            $isReadOnly = !$plantilla['es_propia'] && $plantilla['rol'] === 'lector';
-            $canEdit = $plantilla['es_propia'] || in_array($plantilla['rol'], ['editor', 'admin']);
-            $canShare = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
-            $canDeleteShares = $plantilla['es_propia'] || ($plantilla['rol'] === 'admin');
             $roleLabel = $plantilla['es_propia'] ? 'Propietario' : ucfirst($plantilla['rol']);
             $disabledAttr = $isReadOnly ? 'disabled' : '';
             
@@ -241,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <?php elseif ($isReadOnly): ?>
                 <!-- LECTOR: Solo lectura -->
                 <div style="margin:12px 0;padding:12px;border-radius:6px;background:<?php echo $roleBg; ?>;border:1px solid <?php echo $roleColor; ?>;color:<?php echo $roleColor; ?>;">
-                    <strong>👁️ Modo Solo Lectura</strong><br>
+                    <strong><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Modo Solo Lectura</strong><br>
                     <strong><?php echo htmlspecialchars($plantilla['username']); ?></strong> compartió esta plantilla contigo como <strong>Lector</strong>. 
                     Puedes ver y revisar los datos, pero no puedes editar ni guardar cambios.
                 </div>
@@ -315,7 +390,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php foreach ($trabajoRows as $r): ?>
                         <tr>
                             <td style="display:flex;gap:8px;align-items:center;">
-                                <input type="text" name="estudio[]" value="<?php echo htmlspecialchars($r['estudio'] ?? '', ENT_QUOTES); ?>" placeholder="Estudio de doblaje" style="flex:1;" <?php echo $disabledAttr; ?>>
+                                <div class="estudio-autocomplete-container">
+                                    <input type="text" class="estudio-input" name="estudio[]" value="<?php echo htmlspecialchars(strtoupper($r['estudio'] ?? ''), ENT_QUOTES); ?>" placeholder="Estudio de doblaje" style="flex:1;width:100%;text-transform:uppercase;" <?php echo $disabledAttr; ?>>
+                                    <div class="estudio-autocomplete-dropdown"></div>
+                                </div>
                                 <!-- (Removed per-row preset select: community selection now controls CG/Take) -->
                             </td>
                             <td>
@@ -325,11 +403,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>
                                 <select name="tipo_trabajo[]" required>
                                     <?php
-                                    $opts = ['Cine','Serie','Prueba','Spot','Publicidad','Direccion Cine','Direccion Serie','Personalizado'];
+                                    $opts = [
+                                        'Cine' => 'Cine',
+                                        'Serie' => 'Serie',
+                                        'Prueba' => 'Prueba',
+                                        'Spot' => 'Spot',
+                                        'Publicidad' => 'Publicidad',
+                                        'Direccion Cine' => 'Dirección Cine',
+                                        'Direccion Serie' => 'Dirección Serie',
+                                        'Personalizado' => 'Personalizado (Cantidad x Precio)'
+                                    ];
                                     $sel = $r['tipo'] ?? '';
-                                    foreach ($opts as $opt) {
-                                        $s = ($opt === $sel) ? 'selected' : '';
-                                        echo "<option value=\"".htmlspecialchars($opt, ENT_QUOTES) ."\" $s>".htmlspecialchars($opt)."</option>";
+                                    foreach ($opts as $value => $label) {
+                                        $s = ($value === $sel) ? 'selected' : '';
+                                        echo "<option value=\"".htmlspecialchars($value, ENT_QUOTES) ."\" $s>".htmlspecialchars($label)."</option>";
                                     }
                                     ?>
                                 </select>
@@ -337,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>
                                 <input type="date" name="trabajo_fecha[]" value="<?php echo htmlspecialchars($r['fecha'] ?? '', ENT_QUOTES); ?>" style="width:100%; max-width:160px;">
                             </td>
-                            <td><input type="number" name="cgs[]" value="<?php echo htmlspecialchars($r['cgs'] ?? '', ENT_QUOTES); ?>" placeholder="CGs" required min="0" step="1" pattern="\d+"></td>
+                            <td><input type="number" name="cgs[]" value="<?php echo htmlspecialchars($r['cgs'] ?? '', ENT_QUOTES); ?>" placeholder="CGs" min="0" step="1"></td>
                             <td><input type="number" name="takes[]" value="<?php echo htmlspecialchars($r['takes'] ?? '', ENT_QUOTES); ?>" placeholder="Takes" min="0" step="1"></td>
                             <td>
                                 <!-- Este campo será calculado automáticamente -->
@@ -349,7 +436,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <?php else: ?>
                         <tr>
                             <td style="display:flex;gap:8px;align-items:center;">
-                                <input type="text" name="estudio[]" placeholder="Estudio de doblaje" style="flex:1;">
+                                <div class="estudio-autocomplete-container">
+                                    <input type="text" class="estudio-input" name="estudio[]" placeholder="Estudio de doblaje" style="flex:1;width:100%;text-transform:uppercase;">
+                                    <div class="estudio-autocomplete-dropdown"></div>
+                                </div>
                                 <!-- per-row preset removed; comunidad_plantilla controls CG/Take -->
                             </td>
                             <td>
@@ -365,13 +455,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <option value="Publicidad">Publicidad</option>
                                     <option value="Direccion Cine">Dirección Cine</option>
                                     <option value="Direccion Serie">Dirección Serie</option>
-                                    <option value="Personalizado">Personalizado</option>
+                                    <option value="Personalizado">Personalizado (Cantidad x Precio)</option>
                                 </select>
                             </td>
                             <td>
                                 <input type="date" name="trabajo_fecha[]" value="" style="width:100%; max-width:160px;">
                             </td>
-                            <td><input type="number" name="cgs[]" placeholder="CGs" required min="0" step="1" pattern="\d+"></td>
+                            <td><input type="number" name="cgs[]" placeholder="CGs" min="0" step="1"></td>
                             <td><input type="number" name="takes[]" placeholder="Takes" min="0" step="1"></td>
                             <td>
                                 <!-- Este campo será calculado automáticamente -->
@@ -545,13 +635,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
                 <?php elseif ($isReadOnly): ?>
                 <button type="submit" name="guardar_plantilla" class="button-submit" style="padding:10px 20px;background:#ccc;color:#666;border:none;border-radius:6px;cursor:not-allowed;font-weight:500;font-size:0.95rem;" disabled>
-                    👁️ Solo lectura (No puedes editar)
+                    <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Solo lectura (No puedes editar)
                 </button>
                 <?php endif; ?>
                 
                 <?php if ($canShare): ?>
                 <button type="button" class="share-btn" data-plantilla-id="<?php echo $idPlantilla; ?>" style="padding:10px 20px;background:#28a745;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500;font-size:0.95rem;transition:background 0.2s;" title="Compartir plantilla con otros usuarios">
-                    📤 Compartir
+                    <svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Compartir
                 </button>
                 <?php endif; ?>
                 
@@ -559,6 +649,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="status-text">Listo</span>
                 </span>
             </div>
+
         </form>
     </div>
     <br>
@@ -568,6 +659,56 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php include __DIR__ . '/../src/components/notice.php'; ?>
     <?php include __DIR__ . '/../src/components/share-modal.php'; ?>
     <?php include __DIR__ . '/../src/components/confirm-modal.php'; ?>
+    
+    <!-- Modal de Ayuda - Atajos de teclado -->
+    <div id="help-modal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:300;">
+        <div style="background:#fff;padding:24px;border-radius:12px;max-width:600px;width:92%;box-sizing:border-box;max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="margin:0;font-size:22px;">⌨️ Atajos de Teclado</h2>
+                <button id="help-close" type="button" style="border:none;background:transparent;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+            </div>
+            
+            <div style="border-top:1px solid #eee;padding-top:16px;">
+                <h3 style="margin-top:0;color:#0b69ff;font-size:16px;">Operaciones Principales</h3>
+                <div style="display:grid;gap:12px;">
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#0b69ff;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+S</kbd>
+                        <span>Guardar plantilla</span>
+                    </div>
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#0b69ff;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+N</kbd>
+                        <span>Agregar fila de Trabajo</span>
+                    </div>
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#0b69ff;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+Shift+P</kbd>
+                        <span>Compartir plantilla</span>
+                    </div>
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#0b69ff;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+Shift+E</kbd>
+                        <span>Exportar plantilla (CSV)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="border-top:1px solid #eee;padding-top:16px;margin-top:16px;">
+                <h3 style="margin-top:0;color:#0b69ff;font-size:16px;">Gestión de Filas</h3>
+                <div style="display:grid;gap:12px;">
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#28a745;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+Alt+V</kbd>
+                        <span>Agregar fila de Gasto Variable</span>
+                    </div>
+                    <div style="display:flex;gap:16px;padding:10px;background:#f9f9f9;border-radius:6px;">
+                        <kbd style="background:#28a745;color:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;white-space:nowrap;font-weight:bold;">Ctrl+Alt+F</kbd>
+                        <span>Agregar fila de Gasto Fijo</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="border-top:1px solid #eee;padding-top:16px;margin-top:16px;">
+                <p style="margin:0;font-size:0.9rem;color:#666;">💡 <strong>Consejo:</strong> Los atajos funcionan incluso cuando estás editando campos. Presiona <kbd style="background:#eee;padding:2px 6px;border-radius:3px;font-family:monospace;">?</kbd> en cualquier momento para ver esta ayuda nuevamente.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Script JavaScript -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -607,6 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn && modal) {
             btn.addEventListener('click', function(){ modal.style.display = 'flex'; status.textContent=''; });
             cancel && cancel.addEventListener('click', function(){ modal.style.display='none'; });
+            modal.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.preventDefault(); modal.style.display='none'; } });
 
             copyBtn && copyBtn.addEventListener('click', async function(){
                 const otherId = select.value;
@@ -795,6 +937,17 @@ $(document).ready(function() {
     // When a row's tipo changes, recalculate totals for that row using community unit rates
     $('#tabla-trabajo tbody').on('change', 'select[name="tipo_trabajo[]"]', function(){
         var $row = $(this).closest('tr');
+        var tipoTrabajo = $(this).val();
+        
+        // Actualizar placeholders según el tipo
+        if (tipoTrabajo === 'Personalizado') {
+            $row.find('input[name="cgs[]"]').attr('placeholder', 'Cantidad').attr('title', 'Cantidad de veces que se repite');
+            $row.find('input[name="takes[]"]').attr('placeholder', 'Precio unitario').attr('title', 'Precio por unidad (Cantidad × Precio = Total)');
+        } else {
+            $row.find('input[name="cgs[]"]').attr('placeholder', 'CGs').attr('title', 'Cantidad de CGs');
+            $row.find('input[name="takes[]"]').attr('placeholder', 'Takes').attr('title', 'Cantidad de Takes');
+        }
+        
         // ensure cgs/takes are ints before calc
         $row.find('input[name="cgs[]"], input[name="takes[]"]').each(function(){
             var $i = $(this); var v = $i.val(); if (v === '') return; var ni = parseInt(v,10); if (isNaN(ni) || ni < 0) ni = 0; $i.val(ni);
@@ -838,6 +991,15 @@ $(document).ready(function() {
         var valorCgs = 0;
         var valorTakes = 0;
 
+        // CASO ESPECIAL: Personalizado (CGs × Takes = Total)
+        if (tipoTrabajo === "Personalizado") {
+            var bruto = (isNaN(cgs) ? 0 : cgs) * (isNaN(takes) ? 0 : takes);
+            var usarNeto = document.getElementById('usar_neto') && document.getElementById('usar_neto').checked;
+            var total = usarNeto ? bruto * 0.85 : bruto;
+            fila.find('input[name="total[]"]').val(total.toFixed(2));
+            return;
+        }
+
         // First, try to use community unit rates (unit price) when available.
         var comunidad = (document.getElementById('comunidad_plantilla')||{value:'Madrid'}).value;
         var commRates = communityRates[comunidad] || null;
@@ -872,9 +1034,6 @@ $(document).ready(function() {
                 case "Direccion Serie":
                     valorCgs = 5.85; // Adaptación de Vídeo. 1 minuto o fracción
                     valorTakes = 0; // No hay valor de Takes para la dirección de Serie
-                    break;
-                case "Personalizado":
-                    // Asignar los valores correspondientes para el tipo de trabajo personalizado (si existe)
                     break;
                 default:
                     break;
@@ -938,6 +1097,14 @@ $(document).ready(function() {
     // Initial calculation for loaded rows: apply current community rates and calc totals
     $('#tabla-trabajo tbody tr').each(function() {
         var $row = $(this);
+        var tipoTrabajo = $row.find('select[name="tipo_trabajo[]"]').val();
+        
+        // Actualizar placeholders según el tipo inicial
+        if (tipoTrabajo === 'Personalizado') {
+            $row.find('input[name="cgs[]"]').attr('placeholder', 'Cantidad').attr('title', 'Cantidad de veces que se repite');
+            $row.find('input[name="takes[]"]').attr('placeholder', 'Precio unitario').attr('title', 'Precio por unidad (Cantidad × Precio = Total)');
+        }
+        
         applyCommunityRatesToRow($row);
         calcularTotal($row);
     });
@@ -1196,7 +1363,7 @@ $(document).ready(function() {
                     // 🚫 INTENTO MALICIOSO DETECTADO: Usuario LECTOR intentando guardar
                     console.error('[SECURITY] Intento de guardar por LECTOR detectado. Rol:', roleToken.value);
                     saving = false;
-                    setStatus('❌ Acceso denegado: No puedes guardar', 'error');
+                    setStatus('<svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em;vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8" stroke="white" stroke-width="2"/></svg> Acceso denegado: No puedes guardar', 'error');
                     
                     // Notificar al servidor (logging)
                     fetch(form.action, {
@@ -1217,7 +1384,7 @@ $(document).ready(function() {
                     // 🚫 ACCESO DENEGADO: Usuario no tiene permiso
                     console.error('[SECURITY] Usuario sin permiso de edición intentando guardar');
                     saving = false;
-                    setStatus('❌ No tienes permiso para guardar', 'error');
+                    setStatus('<svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em;vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8" stroke="white" stroke-width="2"/></svg> No tienes permiso para guardar', 'error');
                     return;
                 }
 
@@ -1294,5 +1461,343 @@ $(document).ready(function() {
         setStatus('Listo');
     })();
     </script>
-</body>
+    <script>
+    // ============================
+    // ESTUDIO AUTOCOMPLETE SYSTEM
+    // ============================
+    (function(){
+        // Estudios anteriores del usuario (inyectados desde PHP)
+        const estudiosData = <?php echo json_encode($estudiosAnteriores); ?>;
+        console.log('Estudios cargados:', estudiosData);
+        
+        // Función para posicionar el dropdown
+        function positionDropdown(input, dropdown) {
+            const rect = input.getBoundingClientRect();
+            dropdown.style.left = (rect.left) + 'px';
+            dropdown.style.top = (rect.bottom) + 'px';
+            dropdown.style.width = (rect.width) + 'px';
+        }
+        
+        // Inicializar autocomplete para todos los inputs de estudio
+        document.querySelectorAll('.estudio-input').forEach(input => {
+            const container = input.closest('.estudio-autocomplete-container');
+            const dropdown = container.querySelector('.estudio-autocomplete-dropdown');
+            
+            // Crear elementos del dropdown
+            function renderDropdown(filter = '') {
+                dropdown.innerHTML = '';
+                
+                // Si no hay estudios, mostrar mensaje
+                if (estudiosData.length === 0) {
+                    if (filter.length > 0) {
+                        dropdown.classList.remove('visible');
+                    }
+                    return;
+                }
+                
+                const filtered = estudiosData.filter(estudio => 
+                    estudio.toLowerCase().includes(filter.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdown.classList.remove('visible');
+                    return;
+                }
+                
+                filtered.forEach(estudio => {
+                    const item = document.createElement('div');
+                    item.className = 'estudio-autocomplete-item';
+                    item.textContent = estudio;
+                    item.style.cursor = 'pointer';
+                    
+                    item.addEventListener('click', function() {
+                        input.value = estudio.toUpperCase();
+                        dropdown.classList.remove('visible');
+                        dropdown.innerHTML = '';
+                        input.focus();
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    
+                    item.addEventListener('mouseover', function() {
+                        document.querySelectorAll('.estudio-autocomplete-item').forEach(i => i.classList.remove('selected'));
+                        item.classList.add('selected');
+                    });
+                    
+                    dropdown.appendChild(item);
+                });
+                
+                positionDropdown(input, dropdown);
+                dropdown.classList.add('visible');
+            }
+            
+            // Eventos del input
+            input.addEventListener('focus', function() {
+                if (estudiosData.length > 0) {
+                    renderDropdown(input.value);
+                }
+            });
+            
+            input.addEventListener('input', function() {
+                input.value = input.value.toUpperCase();
+                if (input.value.length > 0 || estudiosData.length === 0) {
+                    renderDropdown(input.value);
+                } else {
+                    renderDropdown('');
+                }
+            });
+            
+            input.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.estudio-autocomplete-item');
+                const selected = dropdown.querySelector('.estudio-autocomplete-item.selected');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (items.length === 0) return;
+                    
+                    if (!selected) {
+                        items[0].classList.add('selected');
+                    } else {
+                        const nextItem = selected.nextElementSibling;
+                        if (nextItem) {
+                            selected.classList.remove('selected');
+                            nextItem.classList.add('selected');
+                        }
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (items.length === 0) return;
+                    
+                    if (selected) {
+                        const prevItem = selected.previousElementSibling;
+                        if (prevItem) {
+                            selected.classList.remove('selected');
+                            prevItem.classList.add('selected');
+                        } else {
+                            selected.classList.remove('selected');
+                        }
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selected) {
+                        selected.click();
+                    } else {
+                        dropdown.classList.remove('visible');
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.remove('visible');
+                    dropdown.innerHTML = '';
+                }
+            });
+            
+            // Cerrar dropdown al hacer click fuera
+            document.addEventListener('click', function(e) {
+                if (!container.contains(e.target)) {
+                    dropdown.classList.remove('visible');
+                    dropdown.innerHTML = '';
+                }
+            });
+            
+            // Repositionar al hacer scroll
+            window.addEventListener('scroll', function() {
+                if (dropdown.classList.contains('visible')) {
+                    positionDropdown(input, dropdown);
+                }
+            });
+        });
+    })();
+    </script>
+    <script>
+    // ============================
+    // KEYBOARD SHORTCUTS SYSTEM
+    // ============================
+    (function(){
+        const helpModal = document.getElementById('help-modal');
+        const helpBtn = document.getElementById('help-btn');
+        const helpClose = document.getElementById('help-close');
+        const form = document.getElementById('form-guardar-plantilla');
+        const isReadOnly = <?php echo json_encode($isReadOnly); ?>;
+        const canEdit = <?php echo json_encode($canEdit); ?>;
+        
+        // Help modal controls
+        if (helpBtn && helpModal && helpClose) {
+            helpBtn.addEventListener('click', function() {
+                helpModal.style.display = 'flex';
+            });
+            
+            helpClose.addEventListener('click', function() {
+                helpModal.style.display = 'none';
+            });
+            
+            helpModal.addEventListener('click', function(e) {
+                if (e.target === helpModal) {
+                    helpModal.style.display = 'none';
+                }
+            });
+            
+            helpModal.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    helpModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Keyboard shortcuts listener
+        document.addEventListener('keydown', function(e) {
+            // Ignora atajos si estamos en modo lectura
+            if (isReadOnly) return;
+            
+            // Ctrl+S: Guardar plantilla
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                const submitBtn = form.querySelector('button[name="guardar_plantilla"]');
+                if (submitBtn && !submitBtn.disabled) {
+                    submitBtn.click();
+                    showToast('📾 Plantilla guardada con Ctrl+S');
+                }
+                return;
+            }
+            
+            // Ctrl+N: Agregar fila de Trabajo
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                const btn = document.getElementById('btn-agregar-trabajo');
+                if (btn && !btn.disabled) {
+                    btn.click();
+                    showToast('➕ Nueva fila de Trabajo agregada con Ctrl+N');
+                }
+                return;
+            }
+            
+            // Ctrl+Alt+V: Agregar fila de Gasto Variable
+            if (e.ctrlKey && e.altKey && e.key === 'v') {
+                e.preventDefault();
+                const btn = document.getElementById('btn-agregar-gasto-variable');
+                if (btn && !btn.disabled) {
+                    btn.click();
+                    showToast('➕ Nueva fila de Gasto Variable agregada con Ctrl+Alt+V');
+                }
+                return;
+            }
+            
+            // Ctrl+Alt+F: Agregar fila de Gasto Fijo
+            if (e.ctrlKey && e.altKey && e.key === 'f') {
+                e.preventDefault();
+                const btn = document.getElementById('btn-agregar-gasto-fijo');
+                if (btn && !btn.disabled) {
+                    btn.click();
+                    showToast('➕ Nueva fila de Gasto Fijo agregada con Ctrl+Alt+F');
+                }
+                return;
+            }
+            
+            // Ctrl+Shift+P: Compartir plantilla
+            if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+                e.preventDefault();
+                const shareBtn = form.querySelector('.share-btn');
+                if (shareBtn && !shareBtn.disabled) {
+                    shareBtn.click();
+                    showToast('<svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v11m-7-2l7-7 7 7M2 20h20v2H2z"/></svg> Abriendo diálogo de compartir con Ctrl+Shift+P');
+                } else {
+                    showToast('<svg class="icon-inline" viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em;vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8" stroke="white" stroke-width="2"/></svg> No tienes permisos para compartir esta plantilla');
+                }
+                return;
+            }
+            
+            // Ctrl+Shift+E: Exportar plantilla
+            if (e.ctrlKey && e.shiftKey && e.key === 'E') {
+                e.preventDefault();
+                const exportBtn = document.getElementById('export-btn');
+                if (exportBtn && !exportBtn.disabled) {
+                    exportBtn.click();
+                    showToast('📥 Menú de exportación abierto con Ctrl+Shift+E');
+                }
+                return;
+            }
+            
+            // ?: Mostrar/ocultar ayuda
+            if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+                e.preventDefault();
+                if (helpModal) {
+                    helpModal.style.display = helpModal.style.display === 'none' ? 'flex' : 'none';
+                }
+                return;
+            }
+            
+            // Escape: Cerrar cualquier modal abierto
+            if (e.key === 'Escape') {
+                if (helpModal && helpModal.style.display === 'flex') {
+                    e.preventDefault();
+                    helpModal.style.display = 'none';
+                }
+            }
+        });
+        
+        // Toast notification system
+        function showToast(message) {
+            // Crear contenedor de toast si no existe
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;pointer-events:none;';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Crear elemento de toast
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background:#333;
+                color:#fff;
+                padding:12px 16px;
+                border-radius:6px;
+                margin-bottom:10px;
+                box-shadow:0 4px 12px rgba(0,0,0,0.15);
+                animation:slideIn 0.3s ease-out;
+                max-width:300px;
+                word-wrap:break-word;
+                pointer-events:auto;
+            `;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(function() {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(function() {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+        
+        // Add animations to document
+        if (!document.getElementById('keyboard-shortcuts-styles')) {
+            const style = document.createElement('style');
+            style.id = 'keyboard-shortcuts-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes slideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    to {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    })();
+    </script>
 </html>

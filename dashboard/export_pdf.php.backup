@@ -1,0 +1,274 @@
+<?php
+/**
+ * export_pdf.php - Generador de PDF en servidor
+ * Usa wkhtmltopdf en Linux o FPDF como fallback
+ * Recibe datos JSON del frontend y genera PDF descargable
+ */
+
+// Iniciar output buffer PRIMERO para capturar TODOS los errores
+ob_start();
+
+// Set error handling - ANTES de cualquier otra cosa
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // No mostrar errores en output
+ini_set('log_errors', 1);
+ini_set('log_errors_max_len', 0);
+
+// Función helper para responder errores JSON SEGURA
+function respondJsonError($message, $code = 400) {
+    $levels = ob_get_level();
+    for ($i = 0; $i < $levels; $i++) {
+        @ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code($code);
+    echo json_encode(['error' => $message]);
+    exit;
+}
+
+// Custom error handler - captura TODOS los errores PHP
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $message = 'Error: ' . $errstr . ' in ' . $errfile . ':' . $errline;
+    respondJsonError($message, 500);
+});
+
+// Custom exception handler - captura TODAS las excepciones no manejadas
+set_exception_handler(function($exception) {
+    respondJsonError('Exception: ' . $exception->getMessage(), 500);
+});
+
+// Fatal error handler - captura fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        respondJsonError('Fatal error: ' . $error['message'], 500);
+    }
+});
+
+// Iniciar sesión SOLO si existe cookie de sesión (no bloquear requests sin sesión)
+if (isset($_COOKIE[session_name()]) || (isset($_REQUEST[session_name()]) && preg_match('/^[a-z0-9\-,]*$/i', $_REQUEST[session_name()]))) {
+    session_start();
+} else {
+    // Sin sesión valida, crear una temporal para esta petición
+    session_id(bin2hex(random_bytes(32)));
+    session_start();
+}
+
+// Verificar que el usuario está autenticado
+if (!isset($_SESSION['username'])) {
+    respondJsonError('No autenticado', 401);
+}
+
+// Verificar que es POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    respondJsonError('Método no permitido', 405);
+}
+
+// Obtener datos JSON
+$input = file_get_contents('php://input');
+$data = json_decode($input, true);
+
+if (!$data || !isset($data['trabajos']) || !isset($data['totales'])) {
+    respondJsonError('Datos inválidos o faltantes', 400);
+}
+
+// Validar que es array
+if (!is_array($data['trabajos'])) {
+    respondJsonError('Formato de trabajos inválido', 400);
+}
+
+try {
+    // Limpiar output buffer antes de generar PDF
+    ob_end_clean();
+    
+    // Crear HTML para el PDF
+    $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
+    $html .= 'body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: white; }';
+    $html .= 'table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #ddd; font-size: 11px; }';
+    $html .= 'th { background: #0b69ff; color: white; padding: 10px; border: 1px solid #0b69ff; text-align: left; font-weight: bold; }';
+    $html .= 'td { padding: 8px; border: 1px solid #ddd; }';
+    $html .= 'tr:nth-child(even) { background: #f9f9f9; }';
+    $html .= 'tr:nth-child(odd) { background: #ffffff; }';
+    $html .= '.header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #0b69ff; }';
+    $html .= '.header-title { font-size: 28px; font-weight: bold; color: #0b69ff; margin-bottom: 5px; }';
+    $html .= '.header-subtitle { font-size: 13px; color: #666; }';
+    $html .= 'h2 { text-align: center; margin: 0 0 10px 0; color: #333; }';
+    $html .= '.generated-date { text-align: center; font-size: 11px; color: #999; margin: 5px 0 20px 0; }';
+    $html .= '.resumen { margin-top: 20px; background: #f5f5f5; padding: 15px; border-left: 4px solid #0b69ff; font-size: 11px; }';
+    $html .= '.resumen strong { color: #0b69ff; }';
+    $html .= '.resumen div { margin-top: 8px; line-height: 1.8; }';
+    $html .= 'page { page-break-after: always; }';
+    $html .= '</style></head><body>';
+    
+    // Encabezado
+    $html .= '<div class="header">';
+    $html .= '<div class="header-title">🎬 TAKEMASTER</div>';
+    $html .= '<div class="header-subtitle">Reporte de Consultas</div>';
+    $html .= '</div>';
+    
+    $html .= '<h2>Consulta de Trabajos</h2>';
+    $html .= '<div class="generated-date">Generado: ' . date('d/m/Y H:i:s') . '</div>';
+    
+    // Tabla
+    $html .= '<table>';
+    $html .= '<thead><tr>';
+    $html .= '<th>Estudio</th>';
+    $html .= '<th>Tipo</th>';
+    $html .= '<th>Fecha</th>';
+    $html .= '<th style="text-align: center;">Takes</th>';
+    $html .= '<th style="text-align: center;">CGs</th>';
+    $html .= '<th style="text-align: right;">Ingresos</th>';
+    $html .= '</tr></thead><tbody>';
+    
+    foreach ($data['trabajos'] as $trabajo) {
+        $html .= '<tr>';
+        $html .= '<td>' . htmlspecialchars($trabajo['estudio'] ?? '') . '</td>';
+        $html .= '<td>' . htmlspecialchars($trabajo['tipo'] ?? '') . '</td>';
+        $html .= '<td>' . htmlspecialchars($trabajo['fecha'] ?? '') . '</td>';
+        $html .= '<td style="text-align: center;">' . htmlspecialchars($trabajo['takes'] ?? '') . '</td>';
+        $html .= '<td style="text-align: center;">' . htmlspecialchars($trabajo['cgs'] ?? '') . '</td>';
+        $html .= '<td style="text-align: right;">' . htmlspecialchars($trabajo['total'] ?? '') . '</td>';
+        $html .= '</tr>';
+    }
+    
+    $html .= '</tbody></table>';
+    
+    // Resumen
+    $html .= '<div class="resumen">';
+    $html .= '<strong>RESUMEN</strong>';
+    $html .= '<div>';
+    $html .= 'Total Trabajos: <strong>' . htmlspecialchars($data['totales']['trabajos'] ?? '0') . '</strong><br>';
+    $html .= 'Total Takes: <strong>' . htmlspecialchars($data['totales']['takes'] ?? '0') . '</strong><br>';
+    $html .= 'Total CGs: <strong>' . htmlspecialchars($data['totales']['cgs'] ?? '0') . '</strong><br>';
+    $html .= 'Total Ingresos: <strong>' . htmlspecialchars($data['totales']['ingresos'] ?? '0€') . '</strong>';
+    $html .= '</div></div>';
+    
+    $html .= '</body></html>';
+    
+    $filename = 'consulta_' . date('Y-m-d') . '.pdf';
+    
+    // Intenta usar wkhtmltopdf (disponible en Linux)
+    $wkhtmltopdf = '/usr/local/bin/wkhtmltopdf'; // Ruta común en Linux
+    if (!file_exists($wkhtmltopdf)) {
+        $wkhtmltopdf = '/usr/bin/wkhtmltopdf'; // Alternativa
+    }
+    
+    if (file_exists($wkhtmltopdf) && PHP_OS_FAMILY === 'Linux') {
+        // Guardar HTML temporalmente
+        $tempHtml = tempnam(sys_get_temp_dir(), 'pdf_');
+        $tempPdf = tempnam(sys_get_temp_dir(), 'pdf_') . '.pdf';
+        
+        if (!$tempHtml || !file_put_contents($tempHtml, $html)) {
+            respondJsonError('No se pudo crear archivo temporal', 500);
+        }
+        
+        // Ejecutar wkhtmltopdf
+        $cmd = escapeshellcmd($wkhtmltopdf) . ' ' . 
+               '--quiet ' .
+               '--print-media-type ' .
+               '--dpi 150 ' .
+               '--page-size A4 ' .
+               '--orientation Landscape ' .
+               '--margin-top 10 --margin-right 10 --margin-bottom 10 --margin-left 10 ' .
+               escapeshellarg($tempHtml) . ' ' .
+               escapeshellarg($tempPdf) . ' 2>&1';
+        
+        $outputArr = [];
+        $returnCode = 0;
+        exec($cmd, $outputArr, $returnCode);
+        
+        if ($returnCode === 0 && file_exists($tempPdf) && filesize($tempPdf) > 0) {
+            // Enviar PDF
+            ob_end_clean();
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($tempPdf));
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Pragma: public');
+            
+            readfile($tempPdf);
+            
+            // Limpiar archivos temporales
+            @unlink($tempHtml);
+            @unlink($tempPdf);
+            exit;
+        } else {
+            // Si wkhtmltopdf falla, limpiar y usar fallback
+            @unlink($tempHtml);
+            @unlink($tempPdf);
+            // Continuar al siguiente fallback
+        }
+    }
+    
+    // Fallback: Generar PDF HTML como descarga (navegador lo convierte)
+    // O usar librería FPDF si está disponible
+    $fpdfPath = __DIR__ . '/../vendor/fpdf/fpdf.php';
+    
+    if (file_exists($fpdfPath)) {
+        require_once $fpdfPath;
+        
+        class PDF extends FPDF {
+            function Header() {
+                // Vacío - encabezado personalizado en el contenido
+            }
+            
+            function Footer() {
+                $this->SetY(-15);
+                $this->SetFont('Arial', 'I', 8);
+                $this->Cell(0, 10, 'Página ' . $this->PageNo(), 0, 0, 'C');
+            }
+        }
+        
+        $pdf = new PDF('L', 'mm', 'A4');
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->SetTextColor(11, 105, 255);
+        $pdf->Cell(0, 10, 'TAKEMASTER', 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 5, 'Reporte de Consultas', 0, 1, 'C');
+        $pdf->Ln(5);
+        
+        // Tabla
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->SetFillColor(11, 105, 255);
+        $pdf->SetTextColor(255, 255, 255);
+        
+        $pdf->Cell(35, 7, 'Estudio', 1, 0, 'L', true);
+        $pdf->Cell(25, 7, 'Tipo', 1, 0, 'L', true);
+        $pdf->Cell(25, 7, 'Fecha', 1, 0, 'L', true);
+        $pdf->Cell(20, 7, 'Takes', 1, 0, 'C', true);
+        $pdf->Cell(20, 7, 'CGs', 1, 0, 'C', true);
+        $pdf->Cell(30, 7, 'Ingresos', 1, 1, 'R', true);
+        
+        $pdf->SetFont('Arial', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
+        
+        foreach ($data['trabajos'] as $trabajo) {
+            $pdf->Cell(35, 7, substr($trabajo['estudio'] ?? '', 0, 15), 1);
+            $pdf->Cell(25, 7, substr($trabajo['tipo'] ?? '', 0, 12), 1);
+            $pdf->Cell(25, 7, $trabajo['fecha'] ?? '', 1);
+            $pdf->Cell(20, 7, $trabajo['takes'] ?? '', 1);
+            $pdf->Cell(20, 7, $trabajo['cgs'] ?? '', 1);
+            $pdf->Cell(30, 7, $trabajo['total'] ?? '', 1);
+            $pdf->Ln();
+        }
+        
+        $pdf->Output('D', $filename);
+        ob_end_clean();
+        exit;
+    }
+    
+    // Último fallback: Enviar como HTML para que el navegador lo guarde/imprima como PDF
+    ob_end_clean();
+    header('Content-Type: text/html; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . str_replace('.pdf', '.html', $filename) . '"');
+    echo $html;
+    exit;
+    
+} catch (Exception $e) {
+    respondJsonError('Error: ' . $e->getMessage(), 500);
+} catch (Throwable $e) {
+    respondJsonError('Error crítico: ' . $e->getMessage(), 500);
+}
+

@@ -85,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_plantilla'])
         }
 
         .content {
-            margin-left: calc(var(--account-sidebar-width) + 24px);
             padding: 24px;
             transition: margin-left 0.18s ease;
         }
@@ -193,6 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_plantilla'])
     <nav class="below-topnav-actions" role="navigation" aria-label="Barra secundaria">
         <a class="action-btn" href="/pags/micuenta.php?section=dashboard" aria-label="Ir a Dashboard">Dashboard</a>
         <a class="action-btn" href="/pags/micuenta.php?section=configuracion" aria-label="Configuración">Configuración</a>
+        <a class="action-btn" href="/pags/micuenta.php?section=consultas" aria-label="Consultas">Consultas</a>
         <a class="action-btn" href="/auth/logout.php" aria-label="Cerrar Sesión">Salir</a>
     </nav>
     <div class="container">
@@ -205,18 +205,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_plantilla'])
                     case 'configuracion':
                         include  __DIR__ . '/../dashboard/configuracion.php';
                         break;
-            case 'dashboard':
-                // IMPORTANTE: Los POSTs en dashboard deben procesarse ANTES de incluir el archivo
-                // para que el exit() funcione correctamente sin que micuenta.php continúe renderizando
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    // Procesar POST de dashboard aquí, FUERA de la inclusión
-                    include __DIR__ . '/../dashboard/dashboard.php';
-                    // Si llegamos aquí, el POST fue procesado y se hizo exit en dashboard.php
-                } else {
-                    // GET: incluir normalmente para mostrar la página
-                    include __DIR__ . '/../dashboard/dashboard.php';
-                }
-                break;
+                    case 'consultas':
+                        // Incluir consultas - puede procesar POST para exportaciones
+                        include  __DIR__ . '/../dashboard/consultas.php';
+                        break;
+                    case 'dashboard':
+                        // IMPORTANTE: Los POSTs en dashboard deben procesarse ANTES de incluir el archivo
+                        // para que el exit() funcione correctamente sin que micuenta.php continúe renderizando
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                            // Procesar POST de dashboard aquí, FUERA de la inclusión
+                            include __DIR__ . '/../dashboard/dashboard.php';
+                            // Si llegamos aquí, el POST fue procesado y se hizo exit en dashboard.php
+                        } else {
+                            // GET: incluir normalmente para mostrar la página
+                            include __DIR__ . '/../dashboard/dashboard.php';
+                        }
+                        break;
                     default:
                         echo "<p>Seleccione una opción del menú.</p>";
                         break;
